@@ -319,7 +319,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit, hint: String)
 
 @Composable
 private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
-    val imported = remember(file) { runCatching { ChatParser.import(file, backupDir) }.getOrNull() }
+    val imported = remember(file) { runCatching { ChatParser.load(file, backupDir) }.getOrNull() }
     var search by remember { mutableStateOf("") }
     var sender by remember { mutableStateOf("All") }
     var dateFilter by remember { mutableStateOf("") }
