@@ -102,7 +102,7 @@ class FloatingBubbleService : Service() {
             }
             panel.addView(item, LinearLayout.LayoutParams(210, -2))
         }
-        action("⬆  Backup chats") { openVault(true) }
+        action("⬆  Backup chats") { openVault(false) }
         action("▣  Open Chat Vault") { openVault(false) }
         action("×  Close") { removeMenu() }
 
