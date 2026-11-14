@@ -83,9 +83,9 @@ class FloatingBubbleService : Service() {
             return
         }
 
-        // Compact vertical icon-only action frame, positioned to the right of the bubble.
+        // Compact horizontal icon-only action frame, positioned beside the bubble.
         val frame = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(8), dp(8), dp(8), dp(8))
             background = GradientDrawable().apply {
@@ -126,10 +126,10 @@ class FloatingBubbleService : Service() {
         addAction(R.drawable.ic_float_close, "Close menu") { /* Bubble remains visible and active. */ }
         addAction(R.drawable.ic_float_exit, "Exit bubble") { stopSelf() }
 
-        val frameWidth = dp(78)
+        val frameWidth = dp(4 * 54 + 8 * 2 + 8 * 2 + 4 * 2)
         val screenWidth = resources.displayMetrics.widthPixels
         val params = WindowManager.LayoutParams(
-            frameWidth, WindowManager.LayoutParams.WRAP_CONTENT,
+            frameWidth, dp(78),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
