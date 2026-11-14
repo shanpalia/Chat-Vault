@@ -40,6 +40,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 private val Mint = Color(0xFF16A887)
 private val DarkMint = Color(0xFF0D725E)
@@ -172,6 +174,12 @@ private fun ChatVaultApp(
             if (file != null) { refresh++; toast = "Backup imported successfully" } else toast = "Could not import this file"
         }
     }
+    val zipExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) {
+            val ok = exportBackups(context, backupDir.listFiles()?.filter { it.isFile }.orEmpty(), uri)
+            toast = if (ok) "All backups exported as ZIP" else "Could not export backups"
+        }
+    }
     val backups = remember(refresh) { backupDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.sortedByDescending { it.lastModified() }.orEmpty() }
     LaunchedEffect(requestBackupPicker) {
         if (requestBackupPicker) {
@@ -263,7 +271,7 @@ private fun ChatVaultApp(
     ) { padding ->
         when (tab) {
             Tab.HOME -> HomeScreen(Modifier.padding(padding), backups, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) }, onOpen = { selectedFile = it }, onWhatsApp = { openWhatsApp(false) }, onBusiness = { openWhatsApp(true) }, onBackups = { tab = Tab.BACKUPS })
-            Tab.BACKUPS -> BackupScreen(Modifier.padding(padding), backups, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) }, onOpen = { selectedFile = it })
+            Tab.BACKUPS -> BackupScreen(Modifier.padding(padding), backups, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) }, onExport = { zipExporter.launch("Chat-Vault-Backups.zip") }, onOpen = { selectedFile = it })
             Tab.CHATS -> ChatsScreen(Modifier.padding(padding), backups, onOpen = { selectedFile = it })
             Tab.TOOLS -> ToolsScreen(Modifier.padding(padding), onWhatsApp = { openWhatsApp(false) }, onBusiness = { openWhatsApp(true) }, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) })
             Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onFloating = floatingToggle, onUpdates = openUpdates)
@@ -319,13 +327,14 @@ private fun QuickTile(title: String, icon: androidx.compose.ui.graphics.vector.I
 }
 
 @Composable
-private fun BackupScreen(modifier: Modifier, backups: List<File>, onImport: () -> Unit, onOpen: (File) -> Unit) {
+private fun BackupScreen(modifier: Modifier, backups: List<File>, onImport: () -> Unit, onExport: () -> Unit, onOpen: (File) -> Unit) {
     Column(modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Backup History", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f)); Text("${backups.size} saved", color = Mint, fontSize = 12.sp)
         }
         Button(onClick = onImport, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Rounded.Add, null); Text("Import another backup") }
+        OutlinedButton(onClick = onExport, enabled = backups.isNotEmpty(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Rounded.FolderZip, null); Spacer(Modifier.width(8.dp)); Text("Export all backups as ZIP") }
         Spacer(Modifier.height(14.dp))
         if (backups.isEmpty()) EmptyState("Nothing saved yet", "Your imported chat backups will appear here.", Icons.Rounded.Archive)
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) { items(backups, key = { it.absolutePath }) { BackupRow(it) { onOpen(it) } } }
@@ -536,6 +545,24 @@ private fun mediaIcon(file: File): androidx.compose.ui.graphics.vector.ImageVect
         "mp3", "aac", "ogg", "opus", "wav", "m4a" -> Icons.Rounded.AudioFile
         "pdf" -> Icons.Rounded.PictureAsPdf
         else -> Icons.Rounded.InsertDriveFile
+    }
+}
+
+private fun exportBackups(context: Context, backups: List<File>, destination: Uri): Boolean {
+    if (backups.isEmpty()) return false
+    return try {
+        context.contentResolver.openOutputStream(destination)?.use { output ->
+            ZipOutputStream(output).use { zip ->
+                backups.filter { it.isFile }.forEach { file ->
+                    zip.putNextEntry(ZipEntry(file.name))
+                    file.inputStream().use { input -> input.copyTo(zip) }
+                    zip.closeEntry()
+                }
+            }
+        } ?: return false
+        true
+    } catch (_: Exception) {
+        false
     }
 }
 
