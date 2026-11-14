@@ -1,6 +1,8 @@
 package com.shanpalia.chatvault
 
 import android.content.Intent
+import android.content.Context
+import androidx.core.content.FileProvider
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -323,6 +326,9 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
     var search by remember { mutableStateOf("") }
     var sender by remember { mutableStateOf("All") }
     var dateFilter by remember { mutableStateOf("") }
+    var showMedia by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val mediaFiles = imported?.mediaFiles.orEmpty()
     val messages = imported?.messages.orEmpty()
     val senders = remember(messages) { listOf("All") + messages.map { it.sender }.filter { it.isNotBlank() }.distinct().sorted() }
     val filtered = messages.filter { (search.isBlank() || it.body.contains(search, true) || it.sender.contains(search, true)) && (sender == "All" || it.sender == sender) && (dateFilter.isBlank() || it.date?.let { d -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(d).contains(dateFilter) } == true) }
@@ -334,6 +340,22 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
             Column(Modifier.weight(1f)) { Text(imported?.title ?: file.name, color = Ink, fontWeight = FontWeight.Bold, maxLines = 1); Text("${messages.size} messages • ${imported?.mediaFiles?.size ?: 0} media files", color = Color.Gray, fontSize = 10.sp) }
         }
         Column(Modifier.padding(10.dp)) {
+            if (mediaFiles.isNotEmpty()) {
+                TextButton(onClick = { showMedia = !showMedia }, modifier = Modifier.align(Alignment.End)) {
+                    Icon(Icons.Rounded.Collections, null); Text(if (showMedia) "Hide media" else "Media & files (${mediaFiles.size})")
+                }
+                if (showMedia) {
+                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 150.dp).background(Color.White, RoundedCornerShape(12.dp)).padding(8.dp)) {
+                        items(mediaFiles, key = { it.absolutePath }) { media ->
+                            Row(Modifier.fillMaxWidth().clickable { openMediaFile(context, media) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(mediaIcon(media), null, tint = Mint); Spacer(Modifier.width(8.dp))
+                                Text(media.name, Modifier.weight(1f), color = Ink, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("OPEN", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
             SearchField(search, { search = it }, "Search messages or contact")
             Spacer(Modifier.height(7.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -361,7 +383,9 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
                             Column(Modifier.widthIn(max = 310.dp).clip(RoundedCornerShape(15.dp)).background(if (message.sender.isBlank()) Color(0xFFD9F5E6) else Color.White).padding(horizontal = 12.dp, vertical = 8.dp)) {
                                 Text(message.sender, color = DarkMint, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 Text(message.body, color = Ink, fontSize = 13.sp, lineHeight = 18.sp)
-                                message.attachment?.let { Text("📎 ${it.name}", color = Mint, fontSize = 10.sp) }
+                                message.attachment?.let { media ->
+                                    Text("📎 ${media.name}", Modifier.clickable { openMediaFile(context, media) }, color = Mint, fontSize = 10.sp)
+                                }
                                 message.date?.let { Text(SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault()).format(it), Modifier.align(Alignment.End), color = Color.Gray, fontSize = 9.sp) }
                             }
                         }
@@ -369,5 +393,36 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+ 
+private fun mediaIcon(file: File): androidx.compose.ui.graphics.vector.ImageVector {
+    return when (file.extension.lowercase(Locale.getDefault())) {
+        "jpg", "jpeg", "png", "webp", "gif" -> Icons.Rounded.Image
+        "mp4", "mov", "3gp", "mkv" -> Icons.Rounded.Videocam
+        "mp3", "aac", "ogg", "opus", "wav", "m4a" -> Icons.Rounded.AudioFile
+        "pdf" -> Icons.Rounded.PictureAsPdf
+        else -> Icons.Rounded.InsertDriveFile
+    }
+}
+
+private fun openMediaFile(context: Context, file: File) {
+    runCatching {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val mime = when (file.extension.lowercase(Locale.getDefault())) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            "mp4", "mov", "3gp", "mkv" -> "video/*"
+            "mp3", "aac", "ogg", "opus", "wav", "m4a" -> "audio/*"
+            "pdf" -> "application/pdf"
+            else -> "*/*"
+        }
+        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        context.startActivity(intent)
+    }.onFailure {
+        Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
     }
 }
