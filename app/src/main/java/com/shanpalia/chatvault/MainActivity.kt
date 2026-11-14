@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
                     backupDir = backupDir,
                     importFile = { uri -> importSelected(uri, backupDir) },
                     openWhatsApp = { business -> launchWhatsApp(business) },
-                    floatingToggle = { enable -> toggleFloatingBubble(enable) }
+                    floatingToggle = { enable -> toggleFloatingBubble(enable) },
+                    openUpdates = { openUpdatesPage() }
                 )
             }
         }
@@ -84,7 +85,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun toggleFloatingBubble(enable: Boolean) {
+    private fun openUpdatesPage() {\n        val url = "https://github.com/shanpalia/Chat-Vault/releases/latest"\n        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))\n    }\n\n    private fun toggleFloatingBubble(enable: Boolean) {
         if (enable && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(intent)
@@ -109,7 +110,7 @@ private fun ChatVaultApp(
     var selectedFile by remember { mutableStateOf<File?>(null) }
     var importedChat by remember { mutableStateOf<ImportedChat?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
-    var showExitDialog by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }\n    var showOverlayDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     BackHandler {
         when {
@@ -126,14 +127,14 @@ private fun ChatVaultApp(
     }
     val backups = remember(refresh) { backupDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.sortedByDescending { it.lastModified() }.orEmpty() }
     var showSplash by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false; if (!Settings.canDrawOverlays(context)) showOverlayDialog = true }
     if (showSplash) {
         BackHandler { /* Keep splash stable during launch */ }
         SplashScreen()
         return
     }
 
-    if (showExitDialog) {
+    if (showOverlayDialog) {\n        AlertDialog(\n            onDismissRequest = { showOverlayDialog = false },\n            title = { Text("Enable floating shortcut?", color = Ink, fontWeight = FontWeight.Bold) },\n            text = { Text("Chat Vault can show a small bubble over WhatsApp so you can quickly open your backups. Android will ask you to allow Display over other apps.") },\n            confirmButton = { TextButton(onClick = { showOverlayDialog = false; toggleFloatingBubble(true) }) { Text("Allow", color = Mint) } },\n            dismissButton = { TextButton(onClick = { showOverlayDialog = false }) { Text("Not now") } }\n        )\n    }\n\n    if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = { Text("Exit Chat Vault?", color = Ink, fontWeight = FontWeight.Bold) },
@@ -187,7 +188,7 @@ private fun ChatVaultApp(
             Tab.BACKUPS -> BackupScreen(Modifier.padding(padding), backups, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) }, onOpen = { selectedFile = it })
             Tab.CHATS -> ChatsScreen(Modifier.padding(padding), backups, onOpen = { selectedFile = it })
             Tab.TOOLS -> ToolsScreen(Modifier.padding(padding), onWhatsApp = { openWhatsApp(false) }, onBusiness = { openWhatsApp(true) }, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) })
-            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onFloating = floatingToggle)
+            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onFloating = floatingToggle, onUpdates = openUpdates)
         }
     }
 }
@@ -281,7 +282,7 @@ private fun ToolsScreen(modifier: Modifier, onWhatsApp: () -> Unit, onBusiness: 
 }
 
 @Composable
-private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit) {
+private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit, onUpdates: () -> Unit) {
     var floating by remember { mutableStateOf(false) }
     Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Settings", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
@@ -293,7 +294,7 @@ private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit) {
         }
         InfoNote("Storage & privacy", "Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
         InfoNote("Permissions", "The floating shortcut requires Android's Display over other apps permission. File import uses Android's system file picker.")
-        InfoNote("About Chat Vault", "Version 1.0 • By PaliaAPK HUB")
+        ToolRow("App updates", "Get the latest Chat Vault version from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)\n        InfoNote("About Chat Vault", "Version 1.0 • By PaliaAPK HUB")
     }
 }
 
@@ -480,19 +481,19 @@ private fun openMediaFile(context: Context, file: File) {
  
 @Composable
 private fun SplashScreen() {
-    Column(Modifier.fillMaxSize().background(Ink), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    Column(Modifier.fillMaxSize().background(Color.White), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Image(painterResource(R.drawable.chat_vault_logo), contentDescription = "Chat Vault logo", modifier = Modifier.size(116.dp))
         Spacer(Modifier.height(18.dp))
-        Text("Chat Vault", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.ExtraBold)
+        Text("Chat Vault", color = Ink, fontSize = 29.sp, fontWeight = FontWeight.ExtraBold)
         Spacer(Modifier.height(5.dp))
         Text("By PaliaAPK HUB", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(26.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("BACKUP", color = Color(0xFFD1E7DF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("BACKUP", color = Ink, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Text("•", color = Mint)
-            Text("VIEW CHATS", color = Color(0xFFD1E7DF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("VIEW CHATS", color = Ink, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Text("•", color = Mint)
-            Text("SECURE", color = Color(0xFFD1E7DF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("SECURE", color = Ink, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
