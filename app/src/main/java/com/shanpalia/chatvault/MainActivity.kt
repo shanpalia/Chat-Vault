@@ -50,8 +50,11 @@ private val ChatBg = Color(0xFFE8F1EC)
 private enum class Tab(val title: String) { HOME("Home"), BACKUPS("Backups"), CHATS("Chats"), TOOLS("Tools"), SETTINGS("Settings") }
 
 class MainActivity : ComponentActivity() {
+    private var requestBackupPicker by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
         val backupDir = File(filesDir, "backups").apply { mkdirs() }
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Mint, secondary = DarkMint, background = Page, surface = Color.White, onSurface = Ink)) {
@@ -60,10 +63,18 @@ class MainActivity : ComponentActivity() {
                     importFile = { uri -> importSelected(uri, backupDir) },
                     openWhatsApp = { business -> launchWhatsApp(business) },
                     floatingToggle = { enable -> toggleFloatingBubble(enable) },
-                    openUpdates = { openUpdatesPage() }
+                    openUpdates = { openUpdatesPage() },
+                    requestBackupPicker = requestBackupPicker,
+                    onBackupPickerHandled = { requestBackupPicker = false }
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("open_backup_picker", false)) requestBackupPicker = true
     }
 
     private fun importSelected(uri: Uri, directory: File): File? {
@@ -109,7 +120,9 @@ private fun ChatVaultApp(
     importFile: (Uri) -> File?,
     openWhatsApp: (Boolean) -> Unit,
     floatingToggle: (Boolean) -> Unit,
-    openUpdates: () -> Unit
+    openUpdates: () -> Unit,
+    requestBackupPicker: Boolean,
+    onBackupPickerHandled: () -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -133,6 +146,12 @@ private fun ChatVaultApp(
         }
     }
     val backups = remember(refresh) { backupDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.sortedByDescending { it.lastModified() }.orEmpty() }
+    LaunchedEffect(requestBackupPicker) {
+        if (requestBackupPicker) {
+            picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream"))
+            onBackupPickerHandled()
+        }
+    }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false; if (!Settings.canDrawOverlays(context)) showOverlayDialog = true }
     if (showSplash) {
@@ -222,7 +241,7 @@ private fun HomeScreen(modifier: Modifier, backups: List<File>, onImport: () -> 
                         Spacer(Modifier.height(8.dp))
                         Text("Keep exported chats and media together, privately on this device.", color = Color(0xFFD2E9E2), fontSize = 12.sp)
                     }
-                    Icon(Icons.Rounded.Security, null, tint = Mint, modifier = Modifier.size(54.dp))
+                    Image(painterResource(R.drawable.chat_vault_logo), contentDescription = "Chat Vault", modifier = Modifier.size(58.dp).clip(RoundedCornerShape(16.dp)))
                 }
                 Spacer(Modifier.height(18.dp))
                 Button(onClick = onImport, modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.buttonColors(containerColor = Mint)) {
@@ -388,6 +407,7 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().background(ChatBg)) {
         Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ArrowBack, "Back", Modifier.clickable(onClick = onBack), tint = Mint)
+            Image(painterResource(R.drawable.chat_vault_logo), contentDescription = "Chat Vault", modifier = Modifier.size(38.dp).padding(start = 6.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) { Text(imported?.title ?: file.name, color = Ink, fontWeight = FontWeight.Bold, maxLines = 1); Text("${messages.size} messages • ${imported?.mediaFiles?.size ?: 0} media files", color = Color.Gray, fontSize = 10.sp) }
         }
