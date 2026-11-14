@@ -153,7 +153,7 @@ private fun ChatVaultApp(
     Scaffold(
         containerColor = Page,
         topBar = {
-            Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().background(Color.White).statusBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Ink), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Shield, null, tint = Mint, modifier = Modifier.size(29.dp))
                     Icon(Icons.Rounded.Chat, null, tint = Color.White, modifier = Modifier.size(17.dp).offset(x = (-2).dp, y = 2.dp))
