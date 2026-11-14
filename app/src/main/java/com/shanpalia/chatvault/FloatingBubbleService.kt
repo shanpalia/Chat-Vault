@@ -3,14 +3,15 @@ package com.shanpalia.chatvault
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.graphics.Typeface
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
@@ -19,29 +20,26 @@ class FloatingBubbleService : Service() {
     private var bubble: View? = null
     private var menu: View? = null
     private lateinit var bubbleParams: WindowManager.LayoutParams
-    private lateinit var menuParams: WindowManager.LayoutParams
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val badge = TextView(this).apply {
-            text = "▣"
-            textSize = 25f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
+        val badge = ImageView(this).apply {
+            setImageResource(R.drawable.chat_vault_logo)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(5, 5, 5, 5)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.rgb(22, 168, 135))
-                setStroke(3, Color.WHITE)
+                setColor(Color.WHITE)
+                setStroke(2, Color.rgb(22, 168, 135))
             }
-            elevation = 14f
-            contentDescription = "Chat Vault shortcuts"
+            elevation = 12f
+            contentDescription = "Chat Vault floating shortcut"
         }
         bubbleParams = WindowManager.LayoutParams(
-            58, 58, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            56, 56, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.TOP or Gravity.START; x = 12; y = 260 }
@@ -81,49 +79,59 @@ class FloatingBubbleService : Service() {
         if (menu != null) { removeMenu(); return }
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(14, 12, 14, 12)
+            setPadding(12, 10, 12, 10)
             background = GradientDrawable().apply {
                 setColor(Color.WHITE)
-                cornerRadius = 28f
+                cornerRadius = 24f
                 setStroke(2, Color.rgb(22, 168, 135))
             }
-            elevation = 18f
+            elevation = 16f
         }
+        val brand = TextView(this).apply {
+            text = "CHAT VAULT"
+            textSize = 12f
+            letterSpacing = 0.08f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(22, 168, 135))
+            gravity = Gravity.CENTER
+            setPadding(12, 9, 12, 9)
+        }
+        panel.addView(brand, LinearLayout.LayoutParams(184, -2))
+
         fun action(label: String, callback: () -> Unit) {
             val item = TextView(this).apply {
                 text = label
-                textSize = 15f
+                textSize = 14f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(Color.rgb(23, 53, 47))
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(18, 15, 18, 15)
+                setPadding(14, 12, 14, 12)
                 isClickable = true
                 setOnClickListener { removeMenu(); callback() }
             }
-            panel.addView(item, LinearLayout.LayoutParams(210, -2))
+            panel.addView(item, LinearLayout.LayoutParams(184, -2))
         }
-        action("⬆  Backup chats") { openVault(false) }
-        action("▣  Open Chat Vault") { openVault(false) }
-        action("×  Close") { removeMenu() }
+        action("▣  Open Chat Vault") { openVault() }
+        action("×  Turn off bubble") { stopSelf() }
 
-        menuParams = WindowManager.LayoutParams(
+        val menuParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = (bubbleParams.x + 64).coerceAtMost(resources.displayMetrics.widthPixels - 230)
+            val screenWidth = resources.displayMetrics.widthPixels
+            x = (bubbleParams.x + 64).coerceAtMost((screenWidth - 205).coerceAtLeast(0))
             y = bubbleParams.y
         }
         menu = panel
         runCatching { windowManager?.addView(panel, menuParams) }.onFailure { menu = null }
     }
 
-    private fun openVault(importNow: Boolean) {
+    private fun openVault() {
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            if (importNow) putExtra("OPEN_IMPORT", true)
         }
         startActivity(intent)
     }
