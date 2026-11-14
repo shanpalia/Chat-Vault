@@ -28,12 +28,20 @@ class FloatingBubbleService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Floating launcher: the exact existing app logo only, with no text or added frame.
-        val badge = ImageView(this).apply {
+        val badge = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.WHITE)
+                setStroke(dp(2), Color.rgb(22, 168, 135))
+            }
+            elevation = dp(8).toFloat()
+            contentDescription = "Chat Vault"
+        }
+        val badgeLogo = ImageView(this).apply {
             setImageResource(R.drawable.chat_vault_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = "Chat Vault"
-            background = null
         }
+        badge.addView(badgeLogo, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.CENTER))
         bubbleParams = WindowManager.LayoutParams(
             dp(62), dp(62), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
