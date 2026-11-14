@@ -27,28 +27,21 @@ class FloatingBubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val badge = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(10), dp(6), dp(14), dp(6))
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(16, 47, 42)); cornerRadius = dp(30).toFloat()
-                setStroke(dp(2), Color.rgb(25, 181, 143))
-            }
-            elevation = dp(8).toFloat()
-            contentDescription = "Chat Vault"
-        }
-        badge.addView(ImageView(this).apply {
+        val badge = ImageView(this).apply {
             setImageResource(R.drawable.chat_vault_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(dp(38), dp(38)))
-        badge.addView(TextView(this).apply {
-            text = "Chat Vault"; textSize = 15f; typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE); setPadding(dp(8), 0, 0, 0)
-        }, LinearLayout.LayoutParams(-2, -2))
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(16, 47, 42))
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(2), Color.rgb(25, 181, 143))
+            }
+            elevation = dp(10).toFloat()
+            contentDescription = "Chat Vault floating menu"
+        }
 
         bubbleParams = WindowManager.LayoutParams(
-            dp(158), dp(54), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            dp(62), dp(62), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.TOP or Gravity.START; x = dp(8); y = dp(260) }
