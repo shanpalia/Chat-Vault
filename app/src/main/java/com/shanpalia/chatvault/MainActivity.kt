@@ -53,28 +53,31 @@ private enum class Tab(val title: String) { HOME("Home"), BACKUPS("Backups"), CH
 
 class MainActivity : ComponentActivity() {
     private var requestBackupPicker by mutableStateOf(false)
-    private var sharedBackupUri by mutableStateOf<Uri?>(null)
+    private var sharedBackupUris by mutableStateOf<List<Uri>>(emptyList())
+    private var sharedBackupText by mutableStateOf<String?>(null)
 
     @Suppress("DEPRECATION")
-    private fun sharedUriFrom(intent: Intent?): Uri? {
-        if (intent == null) return null
+    private fun sharedUrisFrom(intent: Intent?): List<Uri> {
+        if (intent == null) return emptyList()
         return when (intent.action) {
             Intent.ACTION_SEND -> {
-                if (android.os.Build.VERSION.SDK_INT >= 33) {
-                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-                } else {
-                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
-                } ?: intent.clipData?.getItemAt(0)?.uri
+                val stream = if (android.os.Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java) else intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                listOfNotNull(stream ?: intent.clipData?.getItemAt(0)?.uri)
             }
-            Intent.ACTION_VIEW -> intent.data
-            else -> null
+            Intent.ACTION_SEND_MULTIPLE -> {
+                val streams = if (android.os.Build.VERSION.SDK_INT >= 33) intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java) else intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+                (streams?.toList().orEmpty() + (0 until (intent.clipData?.itemCount ?: 0)).mapNotNull { intent.clipData?.getItemAt(it)?.uri }).distinct()
+            }
+            Intent.ACTION_VIEW -> listOfNotNull(intent.data)
+            else -> emptyList()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
-        sharedBackupUri = sharedUriFrom(intent)
+        sharedBackupUris = sharedUrisFrom(intent)
+        sharedBackupText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.takeIf { it.isNotBlank() }
         if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {
             startService(Intent(this, FloatingBubbleService::class.java))
         }
@@ -89,8 +92,9 @@ class MainActivity : ComponentActivity() {
                     openUpdates = { openUpdatesPage() },
                     requestBackupPicker = requestBackupPicker,
                     onBackupPickerHandled = { requestBackupPicker = false },
-                    sharedBackupUri = sharedBackupUri,
-                    onSharedBackupHandled = { sharedBackupUri = null }
+                    sharedBackupUris = sharedBackupUris,
+                    sharedBackupText = sharedBackupText,
+                    onSharedBackupHandled = { sharedBackupUris = emptyList(); sharedBackupText = null }
                 )
             }
         }
@@ -150,7 +154,8 @@ private fun ChatVaultApp(
     openUpdates: () -> Unit,
     requestBackupPicker: Boolean,
     onBackupPickerHandled: () -> Unit,
-    sharedBackupUri: Uri?,
+    sharedBackupUris: List<Uri>,
+    sharedBackupText: String?,
     onSharedBackupHandled: () -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
@@ -187,19 +192,20 @@ private fun ChatVaultApp(
             onBackupPickerHandled()
         }
     }
-    LaunchedEffect(sharedBackupUri) {
-        val uri = sharedBackupUri
-        if (uri != null) {
-            val imported = importFile(uri)
-            if (imported != null) {
-                refresh++
-                toast = "WhatsApp chat received and saved"
-                tab = Tab.BACKUPS
-            } else {
-                toast = "Could not import the shared chat file"
-            }
-            onSharedBackupHandled()
-        }
+    LaunchedEffect(sharedBackupUris, sharedBackupText) {
+        var saved = 0
+        sharedBackupUris.forEach { uri -> if (importFile(uri) != null) saved++ }
+        if (saved > 0) {
+            refresh++
+            toast = if (saved == 1) "WhatsApp chat received and saved" else "$saved shared files saved"
+            tab = Tab.BACKUPS
+        } else if (sharedBackupText != null) {
+            val textFile = File(backupDir, "${System.currentTimeMillis()}-shared-chat.txt")
+            runCatching { textFile.writeText(sharedBackupText, Charsets.UTF_8); saved = 1 }
+            if (saved > 0) { refresh++; toast = "Shared chat text saved"; tab = Tab.BACKUPS }
+            else toast = "Could not save the shared chat"
+        } else if (sharedBackupUris.isNotEmpty()) toast = "Could not import the shared chat file"
+        if (sharedBackupUris.isNotEmpty() || sharedBackupText != null) onSharedBackupHandled()
     }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false; if (!Settings.canDrawOverlays(context)) showOverlayDialog = true }
