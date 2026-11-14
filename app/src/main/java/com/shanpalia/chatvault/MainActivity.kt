@@ -423,7 +423,7 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
         } else if (filtered.isEmpty()) {
             EmptyState("No messages found", "Try changing your search or filters.", Icons.Rounded.SearchOff)
         } else {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(filtered, key = { it.id }) { message ->
                     if (message.system) {
                         Text(message.body, Modifier.fillMaxWidth().padding(horizontal = 22.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFD8E8E0)).padding(9.dp), color = Color(0xFF52645C), fontSize = 10.sp)
