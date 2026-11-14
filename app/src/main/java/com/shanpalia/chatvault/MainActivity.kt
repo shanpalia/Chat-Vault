@@ -363,7 +363,7 @@ private fun getHubUpdate(installed: String): HubUpdate {
     val url="https://ralinnuegsbuvlhwpzln.supabase.co/rest/v1/apps?select=id,name,version,apk_url,telegram_message_id,release_notes&name=eq.Chat%20Vault&limit=1"
     val key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhbGlubnVlZ3NidXZsaHdwemxuIiwiaWF0IjoxNzgwMjk1NjQyLCJleHAiOjIwOTU4NzE2NDJ9.hIec6UxRx5gzSMTi5oJ3_xXw3d1QKCmKsPF-stBwIFE"
     val conn=(URL(url).openConnection() as HttpURLConnection).apply { connectTimeout=15000; readTimeout=15000; setRequestProperty("apikey",key); setRequestProperty("Authorization","Bearer $key"); setRequestProperty("Accept","application/json") }
-    try {
+    return try {
         val code=conn.responseCode; val body=(if(code in 200..299)conn.inputStream else conn.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty()
         if(code !in 200..299) error("PaliaAPK HUB server error ($code)")
         val rows=JSONArray(body); if(rows.length()==0) error("Chat Vault ka app record PaliaAPK HUB par nahi mila.")
