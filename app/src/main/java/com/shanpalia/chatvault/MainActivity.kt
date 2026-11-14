@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -113,6 +115,12 @@ private fun ChatVaultApp(
         }
     }
     val backups = remember(refresh) { backupDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.sortedByDescending { it.lastModified() }.orEmpty() }
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
+    if (showSplash) {
+        SplashScreen()
+        return
+    }
 
     LaunchedEffect(toast) { if (toast != null) { kotlinx.coroutines.delay(2400); toast = null } }
 
@@ -424,5 +432,25 @@ private fun openMediaFile(context: Context, file: File) {
         context.startActivity(intent)
     }.onFailure {
         Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+    }
+}
+
+ 
+@Composable
+private fun SplashScreen() {
+    Column(Modifier.fillMaxSize().background(Ink), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Image(painterResource(R.drawable.chat_vault_logo), contentDescription = "Chat Vault logo", modifier = Modifier.size(116.dp))
+        Spacer(Modifier.height(18.dp))
+        Text("Chat Vault", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.ExtraBold)
+        Spacer(Modifier.height(5.dp))
+        Text("By PaliaAPK HUB", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(26.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("BACKUP", color = Color(0xFFD1E7DF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("•", color = Mint)
+            Text("VIEW CHATS", color = Color(0xFFD1E7DF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("•", color = Mint)
+            Text("SECURE", color = Color(0xFFD1E7DF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
