@@ -6,7 +6,6 @@ import androidx.core.content.FileProvider
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -78,9 +77,6 @@ class MainActivity : ComponentActivity() {
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
         sharedBackupUris = sharedUrisFrom(intent)
         sharedBackupText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.takeIf { it.isNotBlank() }
-        if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {
-            startService(Intent(this, FloatingBubbleService::class.java))
-        }
         val backupDir = File(filesDir, "backups").apply { mkdirs() }
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Mint, secondary = DarkMint, background = Page, surface = Color.White, onSurface = Ink)) {
@@ -88,7 +84,6 @@ class MainActivity : ComponentActivity() {
                     backupDir = backupDir,
                     importFile = { uri -> importSelected(uri, backupDir) },
                     openWhatsApp = { business -> launchWhatsApp(business) },
-                    floatingToggle = { enable -> toggleFloatingBubble(enable) },
                     openUpdates = { openUpdatesPage() },
                     requestBackupPicker = requestBackupPicker,
                     onBackupPickerHandled = { requestBackupPicker = false },
@@ -132,18 +127,6 @@ class MainActivity : ComponentActivity() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
-    private fun toggleFloatingBubble(enable: Boolean) {
-        if (enable && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-            startActivity(intent)
-            Toast.makeText(this, "Allow display over other apps, then enable the bubble again.", Toast.LENGTH_LONG).show()
-            return
-        }
-        getSharedPreferences("chat_vault_settings", MODE_PRIVATE).edit().putBoolean("floating_enabled", enable).apply()
-        val intent = Intent(this, FloatingBubbleService::class.java)
-        if (enable) startService(intent) else stopService(intent)
-        Toast.makeText(this, if (enable) "Floating bubble enabled" else "Floating bubble stopped", Toast.LENGTH_SHORT).show()
-    }
 }
 
 @Composable
@@ -151,7 +134,6 @@ private fun ChatVaultApp(
     backupDir: File,
     importFile: (Uri) -> File?,
     openWhatsApp: (Boolean) -> Unit,
-    floatingToggle: (Boolean) -> Unit,
     openUpdates: () -> Unit,
     requestBackupPicker: Boolean,
     onBackupPickerHandled: () -> Unit,
@@ -165,7 +147,6 @@ private fun ChatVaultApp(
     var importedChat by remember { mutableStateOf<ImportedChat?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
-    var showOverlayDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     BackHandler {
         when {
@@ -209,21 +190,11 @@ private fun ChatVaultApp(
         if (sharedBackupUris.isNotEmpty() || sharedBackupText != null) onSharedBackupHandled()
     }
     var showSplash by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false; if (!Settings.canDrawOverlays(context)) showOverlayDialog = true }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
     if (showSplash) {
         BackHandler { /* Keep splash stable during launch */ }
         SplashScreen()
         return
-    }
-
-    if (showOverlayDialog) {
-        AlertDialog(
-            onDismissRequest = { showOverlayDialog = false },
-            title = { Text("Enable floating shortcut?", color = Ink, fontWeight = FontWeight.Bold) },
-            text = { Text("Chat Vault can show a small bubble over WhatsApp so you can quickly open your backups. Android will ask you to allow Display over other apps.") },
-            confirmButton = { TextButton(onClick = { showOverlayDialog = false; floatingToggle(true) }) { Text("Allow", color = Mint) } },
-            dismissButton = { TextButton(onClick = { showOverlayDialog = false }) { Text("Not now") } }
-        )
     }
 
     if (showExitDialog) {
@@ -281,7 +252,7 @@ private fun ChatVaultApp(
             Tab.BACKUPS -> BackupScreen(Modifier.padding(padding), backups, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) }, onExport = { zipExporter.launch("Chat-Vault-Backups.zip") }, onOpen = { selectedFile = it })
             Tab.CHATS -> ChatsScreen(Modifier.padding(padding), backups, onOpen = { selectedFile = it })
             Tab.TOOLS -> ToolsScreen(Modifier.padding(padding), onWhatsApp = { openWhatsApp(false) }, onBusiness = { openWhatsApp(true) }, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) })
-            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onFloating = floatingToggle, onUpdates = openUpdates)
+            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onUpdates = openUpdates)
         }
     }
 }
@@ -376,19 +347,11 @@ private fun ToolsScreen(modifier: Modifier, onWhatsApp: () -> Unit, onBusiness: 
 }
 
 @Composable
-private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit, onUpdates: () -> Unit) {
-    val context = LocalContext.current
-    var floating by remember { mutableStateOf(context.getSharedPreferences("chat_vault_settings", Context.MODE_PRIVATE).getBoolean("floating_enabled", false)) }
+private fun SettingsScreen(modifier: Modifier, onUpdates: () -> Unit) {
     Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Settings", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.BubbleChart, null, tint = Mint, modifier = Modifier.size(27.dp))
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) { Text("Floating bubble", color = Ink, fontWeight = FontWeight.SemiBold); Text("Show the Chat Vault logo on top of other apps. Tap it for Open App, Backup, Close menu or Exit Bubble. Allow Display over other apps permission to use this shortcut.", color = Color.Gray, fontSize = 11.sp, lineHeight = 15.sp) }
-            Switch(checked = floating, onCheckedChange = { enabled -> floating = enabled; onFloating(enabled) }, colors = SwitchDefaults.colors(checkedTrackColor = Mint))
-        }
         InfoNote("Storage & privacy", "Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
-        InfoNote("Permissions", "The floating shortcut requires Android's Display over other apps permission. File import uses Android's system file picker.")
+        InfoNote("Import chats", "In WhatsApp, open a chat → ⋮ → More → Export chat, then share the TXT or ZIP file with Chat Vault.")
         ToolRow("App updates", "Check and install the latest Chat Vault release from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)
         InfoNote("About Chat Vault", "Version 1.0.1 • By PaliaAPK HUB")
     }
