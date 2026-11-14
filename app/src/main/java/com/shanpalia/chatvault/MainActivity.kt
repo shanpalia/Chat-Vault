@@ -15,6 +15,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +27,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import java.net.HttpURLConnection
+import java.net.URL
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -84,7 +92,7 @@ class MainActivity : ComponentActivity() {
                     backupDir = backupDir,
                     importFile = { uri -> importSelected(uri, backupDir) },
                     openWhatsApp = { business -> launchWhatsApp(business) },
-                    openUpdates = { openUpdatesPage() },
+                    openHubLink = { url -> openExternalUrl(url) },
                     requestBackupPicker = requestBackupPicker,
                     onBackupPickerHandled = { requestBackupPicker = false },
                     sharedBackupUris = sharedBackupUris,
@@ -122,8 +130,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openUpdatesPage() {
-        val url = "https://github.com/shanpalia/Chat-Vault/releases/latest"
+    private fun openExternalUrl(url: String) {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
@@ -134,7 +141,7 @@ private fun ChatVaultApp(
     backupDir: File,
     importFile: (Uri) -> File?,
     openWhatsApp: (Boolean) -> Unit,
-    openUpdates: () -> Unit,
+    openHubLink: (String) -> Unit,
     requestBackupPicker: Boolean,
     onBackupPickerHandled: () -> Unit,
     sharedBackupUris: List<Uri>,
@@ -252,7 +259,7 @@ private fun ChatVaultApp(
             Tab.BACKUPS -> BackupScreen(Modifier.padding(padding), backups, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) }, onExport = { zipExporter.launch("Chat-Vault-Backups.zip") }, onOpen = { selectedFile = it })
             Tab.CHATS -> ChatsScreen(Modifier.padding(padding), backups, onOpen = { selectedFile = it })
             Tab.TOOLS -> ToolsScreen(Modifier.padding(padding), onWhatsApp = { openWhatsApp(false) }, onBusiness = { openWhatsApp(true) }, onImport = { picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream")) })
-            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onUpdates = openUpdates)
+            Tab.SETTINGS -> SettingsScreen(Modifier.padding(padding), onOpenHubLink = openHubLink)
         }
     }
 }
@@ -346,51 +353,73 @@ private fun ToolsScreen(modifier: Modifier, onWhatsApp: () -> Unit, onBusiness: 
     }
 }
 
+
+private data class HubUpdate(val version: String, val url: String, val notes: String, val available: Boolean)
+private fun versionCompare(x: String, y: String): Int {
+    val a=x.split(".", "-", "_").map { it.toIntOrNull() ?: 0 }; val b=y.split(".", "-", "_").map { it.toIntOrNull() ?: 0 }
+    for(i in 0 until maxOf(a.size,b.size)){ val d=(a.getOrNull(i)?:0).compareTo(b.getOrNull(i)?:0); if(d!=0)return d }; return 0
+}
+private fun getHubUpdate(installed: String): HubUpdate {
+    val url="https://ralinnuegsbuvlhwpzln.supabase.co/rest/v1/apps?select=id,name,version,apk_url,telegram_message_id,release_notes&name=eq.Chat%20Vault&limit=1"
+    val key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhbGlubnVlZ3NidXZsaHdwemxuIiwiaWF0IjoxNzgwMjk1NjQyLCJleHAiOjIwOTU4NzE2NDJ9.hIec6UxRx5gzSMTi5oJ3_xXw3d1QKCmKsPF-stBwIFE"
+    val conn=(URL(url).openConnection() as HttpURLConnection).apply { connectTimeout=15000; readTimeout=15000; setRequestProperty("apikey",key); setRequestProperty("Authorization","Bearer $key"); setRequestProperty("Accept","application/json") }
+    try {
+        val code=conn.responseCode; val body=(if(code in 200..299)conn.inputStream else conn.errorStream)?.bufferedReader()?.use{it.readText()}.orEmpty()
+        if(code !in 200..299) error("PaliaAPK HUB server error ($code)")
+        val rows=JSONArray(body); if(rows.length()==0) error("Chat Vault ka app record PaliaAPK HUB par nahi mila.")
+        val app=rows.getJSONObject(0); val v=app.optString("version",""); if(v.isBlank())error("PaliaAPK HUB par version set nahi hai.")
+        val id=app.optString("id",""); val tg=app.optString("telegram_message_id",""); val apk=app.optString("apk_url","")
+        val download=when { tg.isNotBlank()&&tg!="null"->"https://paliaapk-telegram-api.onrender.com/download-apk/$tg"; apk.startsWith("https://")->apk; id.isNotBlank()&&id!="null"->"https://paliaapkhub.com/app.html?id=$id"; else->"https://paliaapkhub.com/" }
+        HubUpdate(v,download,app.optString("release_notes",""),versionCompare(v,installed)>0)
+    } finally { conn.disconnect() }
+}
+
 @Composable
-private fun SettingsScreen(modifier: Modifier, onUpdates: () -> Unit) {
-    Column(
-        modifier.fillMaxSize().padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text("Settings", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
-
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Backup, null, tint = Mint, modifier = Modifier.size(25.dp))
-                Spacer(Modifier.width(9.dp))
-                Text("WhatsApp chat backup kaise lein?", color = Ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
-            Text("1. WhatsApp ya WhatsApp Business kholen aur jis contact ki chat save karni hai, woh chat kholen.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
-            Text("2. Upar ⋮ menu par tap karein → More → Export chat.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
-            Text("3. Without media chunen (sirf messages) ya Include media chunen (messages ke saath media; WhatsApp ZIP bana sakta hai).", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
-            Text("4. Share menu mein Chat Vault chunen. Agar Chat Vault na dikhe, Save to Files karein; phir Chat Vault → Backups → Import another backup se TXT/ZIP file chunen.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
-            Text("5. Import hone ke baad Backups tab mein chat milegi. Use kholkar messages search aur browse kar sakte hain.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
-            Text("Note: WhatsApp se Export Chat aapko khud shuru karna hota hai. Chat Vault WhatsApp ki private chats ko apne-aap access nahi kar sakta.", color = DarkMint, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+private fun SettingsScreen(modifier: Modifier, onOpenHubLink: (String) -> Unit) {
+    val context=LocalContext.current; val scope=rememberCoroutineScope()
+    val installed=remember { runCatching { @Suppress("DEPRECATION") context.packageManager.getPackageInfo(context.packageName,0).versionName ?: "1.0.1" }.getOrDefault("1.0.1") }
+    var checking by remember { mutableStateOf(false) }; var status by remember { mutableStateOf("Tap the button to check the latest version.") }
+    var latest by remember { mutableStateOf<String?>(null) }; var notes by remember { mutableStateOf("") }; var apkLink by remember { mutableStateOf<String?>(null) }; var available by remember { mutableStateOf(false) }
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement=Arrangement.spacedBy(14.dp)) {
+        Text("Settings",fontSize=22.sp,color=Ink,fontWeight=FontWeight.Bold)
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically){ Icon(Icons.Rounded.Backup,null,tint=Mint); Spacer(Modifier.width(9.dp)); Text("WhatsApp chat backup kaise lein?",color=Ink,fontWeight=FontWeight.Bold,fontSize=16.sp) }
+            Text("1. WhatsApp ya WhatsApp Business mein jis contact ki chat save karni hai, woh chat kholen.",color=Ink,fontSize=12.sp,lineHeight=18.sp)
+            Text("2. Upar ⋮ menu → More → Export chat par tap karein.",color=Ink,fontSize=12.sp,lineHeight=18.sp)
+            Text("3. Without media (sirf messages) ya Include media (messages aur media) chunen.",color=Ink,fontSize=12.sp,lineHeight=18.sp)
+            Text("4. Share menu mein Chat Vault chunen. Na dikhe to Save to Files karein, phir Backups → Import another backup se TXT/ZIP file select karein.",color=Ink,fontSize=12.sp,lineHeight=18.sp)
+            Text("5. Import ke baad Backups tab mein chat kholen aur messages browse/search karein.",color=Ink,fontSize=12.sp,lineHeight=18.sp)
+            Text("Note: Export Chat aapko WhatsApp mein khud shuru karna hoga. Chat Vault private chats ko seedhe access nahi kar sakta.",color=DarkMint,fontSize=11.sp,lineHeight=16.sp,fontWeight=FontWeight.Medium)
         }
-
-        Column(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("App update", color = Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text("Latest Chat Vault version aur APK dekhne ke liye neeche button dabayein.", color = Color.Gray, fontSize = 12.sp)
-            Button(
-                onClick = onUpdates,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Mint)
-            ) {
-                Icon(Icons.Rounded.SystemUpdate, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Check for App Updates")
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically){ Icon(Icons.Rounded.SystemUpdate,null,tint=Mint); Spacer(Modifier.width(9.dp)); Text("Chat Vault App Update",color=Ink,fontWeight=FontWeight.Bold,fontSize=16.sp) }
+            Text("Installed version: v$installed",color=Color.Gray,fontSize=12.sp)
+            Button(onClick={
+                checking=true; status="PaliaAPK HUB se latest version check ho raha hai..."; latest=null; apkLink=null; available=false
+                scope.launch { try { val u=withContext(Dispatchers.IO){getHubUpdate(installed)}; latest=u.version; notes=u.notes; apkLink=u.url; available=u.available; status=if(u.available) "New update available: v${u.version}" else "You're up to date • Latest v${u.version}" } catch(t:Throwable){status=t.message?: "Update check failed. Please try again."} finally{checking=false} }
+            },enabled=!checking,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Mint)) {
+                if(checking)CircularProgressIndicator(Modifier.size(18.dp),color=Color.White,strokeWidth=2.dp) else Icon(Icons.Rounded.Refresh,null)
+                Spacer(Modifier.width(8.dp)); Text(if(checking)"Checking..." else "Check for Updates")
+            }
+            Text(status,color=if(available)DarkMint else Ink,fontSize=12.sp,fontWeight=FontWeight.SemiBold,lineHeight=18.sp)
+            if(latest!=null&&available){
+                if(notes.isNotBlank())Text("What's new: $notes",color=Color.Gray,fontSize=11.sp,lineHeight=16.sp)
+                Button(onClick={apkLink?.let(onOpenHubLink)},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=DarkMint)){Icon(Icons.Rounded.Download,null);Spacer(Modifier.width(8.dp));Text("Download v$latest")}
             }
         }
-
-        InfoNote("Storage & privacy", "Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
-        InfoNote("About Chat Vault", "Version 1.0.1 • By PaliaAPK HUB")
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color.White).padding(16.dp),verticalArrangement=Arrangement.spacedBy(11.dp)) {
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Box(Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE5F7F0)),contentAlignment=Alignment.Center){Image(painterResource(R.drawable.chat_vault_logo),contentDescription="PaliaAPK HUB logo",modifier=Modifier.size(36.dp))}
+                Spacer(Modifier.width(11.dp)); Column(Modifier.weight(1f)){Text("PaliaAPK HUB",color=Ink,fontSize=17.sp,fontWeight=FontWeight.ExtraBold);Text("Apps • Games • Tools",color=Mint,fontSize=11.sp,fontWeight=FontWeight.SemiBold)}
+                Icon(Icons.Rounded.Verified,null,tint=Mint)
+            }
+            Text("Discover more apps, games and useful tools from PaliaAPK HUB.",color=Color.Gray,fontSize=12.sp,lineHeight=17.sp)
+            Button(onClick={onOpenHubLink("https://paliaapkhub.com/")},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Mint)){Icon(Icons.Rounded.Explore,null);Spacer(Modifier.width(8.dp));Text("Visit PaliaAPK HUB")}
+            OutlinedButton(onClick={onOpenHubLink("https://paliaapkhub.com/updates.html")},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp)){Icon(Icons.Rounded.NewReleases,null);Spacer(Modifier.width(8.dp));Text("More Updates")}
+            Text("Powered by PaliaAPK HUB • Developer: ShanPalia",color=Color.Gray,fontSize=10.sp)
+        }
+        InfoNote("Storage & privacy","Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
+        InfoNote("About Chat Vault","Version $installed • By PaliaAPK HUB")
     }
 }
 
