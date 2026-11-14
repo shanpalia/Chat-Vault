@@ -107,7 +107,7 @@ class FloatingBubbleService : Service() {
         fun addAction(iconRes: Int, description: String, callback: () -> Unit) {
             val tile = FrameLayout(this).apply {
                 background = GradientDrawable().apply {
-                    setColor(Color.rgb(232, 248, 244))
+                    setColor(Color.WHITE)
                     cornerRadius = dp(15).toFloat()
                 }
                 isClickable = true
