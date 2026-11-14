@@ -51,10 +51,28 @@ private enum class Tab(val title: String) { HOME("Home"), BACKUPS("Backups"), CH
 
 class MainActivity : ComponentActivity() {
     private var requestBackupPicker by mutableStateOf(false)
+    private var sharedBackupUri by mutableStateOf<Uri?>(null)
+
+    @Suppress("DEPRECATION")
+    private fun sharedUriFrom(intent: Intent?): Uri? {
+        if (intent == null) return null
+        return when (intent.action) {
+            Intent.ACTION_SEND -> {
+                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                } ?: intent.clipData?.getItemAt(0)?.uri
+            }
+            Intent.ACTION_VIEW -> intent.data
+            else -> null
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
+        sharedBackupUri = sharedUriFrom(intent)
         if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {
             startService(Intent(this, FloatingBubbleService::class.java))
         }
@@ -68,7 +86,9 @@ class MainActivity : ComponentActivity() {
                     floatingToggle = { enable -> toggleFloatingBubble(enable) },
                     openUpdates = { openUpdatesPage() },
                     requestBackupPicker = requestBackupPicker,
-                    onBackupPickerHandled = { requestBackupPicker = false }
+                    onBackupPickerHandled = { requestBackupPicker = false },
+                    sharedBackupUri = sharedBackupUri,
+                    onSharedBackupHandled = { sharedBackupUri = null }
                 )
             }
         }
@@ -78,6 +98,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra("open_backup_picker", false)) requestBackupPicker = true
+        sharedBackupUri = sharedUriFrom(intent)
     }
 
     private fun importSelected(uri: Uri, directory: File): File? {
@@ -126,7 +147,9 @@ private fun ChatVaultApp(
     floatingToggle: (Boolean) -> Unit,
     openUpdates: () -> Unit,
     requestBackupPicker: Boolean,
-    onBackupPickerHandled: () -> Unit
+    onBackupPickerHandled: () -> Unit,
+    sharedBackupUri: Uri?,
+    onSharedBackupHandled: () -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -154,6 +177,20 @@ private fun ChatVaultApp(
         if (requestBackupPicker) {
             picker.launch(arrayOf("text/plain", "application/zip", "application/octet-stream"))
             onBackupPickerHandled()
+        }
+    }
+    LaunchedEffect(sharedBackupUri) {
+        val uri = sharedBackupUri
+        if (uri != null) {
+            val imported = importFile(uri)
+            if (imported != null) {
+                refresh++
+                toast = "WhatsApp chat received and saved"
+                tab = Tab.BACKUPS
+            } else {
+                toast = "Could not import the shared chat file"
+            }
+            onSharedBackupHandled()
         }
     }
     var showSplash by remember { mutableStateOf(true) }
