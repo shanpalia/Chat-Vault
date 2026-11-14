@@ -172,10 +172,11 @@ private fun ChatVaultApp(
         containerColor = Page,
         topBar = {
             Row(Modifier.fillMaxWidth().background(Color.White).statusBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Ink), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Shield, null, tint = Mint, modifier = Modifier.size(29.dp))
-                    Icon(Icons.Rounded.Chat, null, tint = Color.White, modifier = Modifier.size(17.dp).offset(x = (-2).dp, y = 2.dp))
-                }
+                Image(
+                    painter = painterResource(R.drawable.chat_vault_logo),
+                    contentDescription = "Chat Vault logo",
+                    modifier = Modifier.size(58.dp).clip(RoundedCornerShape(16.dp))
+                )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Chat Vault", fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, color = Ink)
