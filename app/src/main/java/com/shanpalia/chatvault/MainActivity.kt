@@ -108,7 +108,8 @@ private fun ChatVaultApp(
     backupDir: File,
     importFile: (Uri) -> File?,
     openWhatsApp: (Boolean) -> Unit,
-    floatingToggle: (Boolean) -> Unit
+    floatingToggle: (Boolean) -> Unit,
+    openUpdates: () -> Unit
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -145,7 +146,7 @@ private fun ChatVaultApp(
             onDismissRequest = { showOverlayDialog = false },
             title = { Text("Enable floating shortcut?", color = Ink, fontWeight = FontWeight.Bold) },
             text = { Text("Chat Vault can show a small bubble over WhatsApp so you can quickly open your backups. Android will ask you to allow Display over other apps.") },
-            confirmButton = { TextButton(onClick = { showOverlayDialog = false; toggleFloatingBubble(true) }) { Text("Allow", color = Mint) } },
+            confirmButton = { TextButton(onClick = { showOverlayDialog = false; floatingToggle(true) }) { Text("Allow", color = Mint) } },
             dismissButton = { TextButton(onClick = { showOverlayDialog = false }) { Text("Not now") } }
         )
     }
@@ -216,8 +217,7 @@ private fun HomeScreen(modifier: Modifier, backups: List<File>, onImport: () -> 
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Ink).padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Your conversations.
-Safe in your vault.", color = Color.White, fontSize = 23.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold)
+                        Text("Your conversations.\nSafe in your vault.", color = Color.White, fontSize = 23.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Text("Keep exported chats and media together, privately on this device.", color = Color(0xFFD2E9E2), fontSize = 12.sp)
                     }
