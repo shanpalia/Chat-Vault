@@ -55,7 +55,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
-        if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {\n            startService(Intent(this, FloatingBubbleService::class.java))\n        }\n        val backupDir = File(filesDir, "backups").apply { mkdirs() }
+        if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {
+            startService(Intent(this, FloatingBubbleService::class.java))
+        }\n        val backupDir = File(filesDir, "backups").apply { mkdirs() }
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Mint, secondary = DarkMint, background = Page, surface = Color.White, onSurface = Ink)) {
                 ChatVaultApp(
@@ -108,7 +110,9 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Allow display over other apps, then enable the bubble again.", Toast.LENGTH_LONG).show()
             return
         }
-        getSharedPreferences("chat_vault_settings", MODE_PRIVATE).edit().putBoolean("floating_enabled", enable).apply()\n        val intent = Intent(this, FloatingBubbleService::class.java)\n        if (enable) startService(intent) else stopService(intent)
+        getSharedPreferences("chat_vault_settings", MODE_PRIVATE).edit().putBoolean("floating_enabled", enable).apply()
+        val intent = Intent(this, FloatingBubbleService::class.java)
+        if (enable) startService(intent) else stopService(intent)
         Toast.makeText(this, if (enable) "Floating bubble enabled" else "Floating bubble stopped", Toast.LENGTH_SHORT).show()
     }
 }
@@ -319,7 +323,9 @@ private fun ToolsScreen(modifier: Modifier, onWhatsApp: () -> Unit, onBusiness: 
 
 @Composable
 private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit, onUpdates: () -> Unit) {
-    val context = LocalContext.current\n    var floating by remember { mutableStateOf(context.getSharedPreferences("chat_vault_settings", Context.MODE_PRIVATE).getBoolean("floating_enabled", false)) }\n    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    val context = LocalContext.current
+    var floating by remember { mutableStateOf(context.getSharedPreferences("chat_vault_settings", Context.MODE_PRIVATE).getBoolean("floating_enabled", false)) }
+    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Settings", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.BubbleChart, null, tint = Mint, modifier = Modifier.size(27.dp))
