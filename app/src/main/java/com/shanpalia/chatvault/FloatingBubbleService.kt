@@ -130,7 +130,7 @@ class FloatingBubbleService : Service() {
         }
 
         addAction(R.drawable.ic_float_open, "Open app") { openVault(false) }
-        addAction(R.drawable.ic_float_backup, "Backup") { openWhatsApp() }
+        addAction(R.drawable.ic_float_backup, "Backup") { openVault(true) }
         addAction(R.drawable.ic_float_close, "Close menu") { /* Bubble remains visible and active. */ }
         addAction(R.drawable.ic_float_exit, "Exit bubble") { stopSelf() }
 
