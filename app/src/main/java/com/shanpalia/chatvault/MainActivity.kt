@@ -85,7 +85,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openUpdatesPage() {\n        val url = "https://github.com/shanpalia/Chat-Vault/releases/latest"\n        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))\n    }\n\n    private fun toggleFloatingBubble(enable: Boolean) {
+    private fun openUpdatesPage() {
+        val url = "https://github.com/shanpalia/Chat-Vault/releases/latest"
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
+    private fun toggleFloatingBubble(enable: Boolean) {
         if (enable && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(intent)
@@ -110,7 +115,8 @@ private fun ChatVaultApp(
     var selectedFile by remember { mutableStateOf<File?>(null) }
     var importedChat by remember { mutableStateOf<ImportedChat?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
-    var showExitDialog by remember { mutableStateOf(false) }\n    var showOverlayDialog by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showOverlayDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     BackHandler {
         when {
@@ -134,7 +140,17 @@ private fun ChatVaultApp(
         return
     }
 
-    if (showOverlayDialog) {\n        AlertDialog(\n            onDismissRequest = { showOverlayDialog = false },\n            title = { Text("Enable floating shortcut?", color = Ink, fontWeight = FontWeight.Bold) },\n            text = { Text("Chat Vault can show a small bubble over WhatsApp so you can quickly open your backups. Android will ask you to allow Display over other apps.") },\n            confirmButton = { TextButton(onClick = { showOverlayDialog = false; toggleFloatingBubble(true) }) { Text("Allow", color = Mint) } },\n            dismissButton = { TextButton(onClick = { showOverlayDialog = false }) { Text("Not now") } }\n        )\n    }\n\n    if (showExitDialog) {
+    if (showOverlayDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverlayDialog = false },
+            title = { Text("Enable floating shortcut?", color = Ink, fontWeight = FontWeight.Bold) },
+            text = { Text("Chat Vault can show a small bubble over WhatsApp so you can quickly open your backups. Android will ask you to allow Display over other apps.") },
+            confirmButton = { TextButton(onClick = { showOverlayDialog = false; toggleFloatingBubble(true) }) { Text("Allow", color = Mint) } },
+            dismissButton = { TextButton(onClick = { showOverlayDialog = false }) { Text("Not now") } }
+        )
+    }
+
+    if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = { Text("Exit Chat Vault?", color = Ink, fontWeight = FontWeight.Bold) },
@@ -200,7 +216,8 @@ private fun HomeScreen(modifier: Modifier, backups: List<File>, onImport: () -> 
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Ink).padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Your conversations.\nSafe in your vault.", color = Color.White, fontSize = 23.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold)
+                        Text("Your conversations.
+Safe in your vault.", color = Color.White, fontSize = 23.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Text("Keep exported chats and media together, privately on this device.", color = Color(0xFFD2E9E2), fontSize = 12.sp)
                     }
@@ -294,7 +311,8 @@ private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit, on
         }
         InfoNote("Storage & privacy", "Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
         InfoNote("Permissions", "The floating shortcut requires Android's Display over other apps permission. File import uses Android's system file picker.")
-        ToolRow("App updates", "Get the latest Chat Vault version from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)\n        InfoNote("About Chat Vault", "Version 1.0 • By PaliaAPK HUB")
+        ToolRow("App updates", "Get the latest Chat Vault version from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)
+        InfoNote("About Chat Vault", "Version 1.0 • By PaliaAPK HUB")
     }
 }
 
