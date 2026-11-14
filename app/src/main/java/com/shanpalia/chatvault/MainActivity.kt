@@ -9,6 +9,7 @@ import android.provider.OpenableColumns
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -108,6 +109,15 @@ private fun ChatVaultApp(
     var selectedFile by remember { mutableStateOf<File?>(null) }
     var importedChat by remember { mutableStateOf<ImportedChat?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    BackHandler {
+        when {
+            selectedFile != null -> selectedFile = null
+            tab != Tab.HOME -> tab = Tab.HOME
+            else -> showExitDialog = true
+        }
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             val file = importFile(uri)
@@ -118,8 +128,19 @@ private fun ChatVaultApp(
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(1400); showSplash = false }
     if (showSplash) {
+        BackHandler { /* Keep splash stable during launch */ }
         SplashScreen()
         return
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Exit Chat Vault?", color = Ink, fontWeight = FontWeight.Bold) },
+            text = { Text("Do you want to close the app? Your saved backups will remain on this device.") },
+            confirmButton = { TextButton(onClick = { showExitDialog = false; (context as? ComponentActivity)?.finish() }) { Text("Exit", color = Mint) } },
+            dismissButton = { TextButton(onClick = { showExitDialog = false }) { Text("Stay") } }
+        )
     }
 
     LaunchedEffect(toast) { if (toast != null) { kotlinx.coroutines.delay(2400); toast = null } }
@@ -330,7 +351,10 @@ private fun SearchField(value: String, onChange: (String) -> Unit, hint: String)
 
 @Composable
 private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
     val imported = remember(file) { runCatching { ChatParser.load(file, backupDir) }.getOrNull() }
+    var myName by remember(file) { mutableStateOf("") }
+    var showMyNameMenu by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
     var sender by remember { mutableStateOf("All") }
     var dateFilter by remember { mutableStateOf("") }
@@ -367,6 +391,14 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
             SearchField(search, { search = it }, "Search messages or contact")
             Spacer(Modifier.height(7.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box {
+                    AssistChip(onClick = { showMyNameMenu = true }, label = { Text(if (myName.isBlank()) "Set your name" else "You: $myName", maxLines = 1) }, leadingIcon = { Icon(Icons.Rounded.AccountCircle, null) })
+                    DropdownMenu(expanded = showMyNameMenu, onDismissRequest = { showMyNameMenu = false }) {
+                        senders.filter { it != "All" }.forEach { name ->
+                            DropdownMenuItem(text = { Text(name) }, onClick = { myName = name; showMyNameMenu = false })
+                        }
+                    }
+                }
                 var menu by remember { mutableStateOf(false) }
                 Box {
                     AssistChip(onClick = { menu = true }, label = { Text(if (sender == "All") "All contacts" else sender, maxLines = 1) }, leadingIcon = { Icon(Icons.Rounded.Person, null) })
@@ -379,6 +411,15 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
         }
         if (imported == null) {
             EmptyState("Could not read this backup", "The file may be damaged or use an unsupported format.", Icons.Rounded.ErrorOutline)
+        } else if (myName.isBlank() && senders.size > 1) {
+            Column(Modifier.fillMaxWidth().padding(18.dp).clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp)) {
+                Text("Which name is yours?", color = Ink, fontWeight = FontWeight.Bold)
+                Text("Choose your name once. Your messages will appear on the right; everyone else's on the left.", color = Color.Gray, fontSize = 12.sp)
+                Spacer(Modifier.height(8.dp))
+                senders.filter { it != "All" }.forEach { name ->
+                    TextButton(onClick = { myName = name }, modifier = Modifier.fillMaxWidth()) { Text(name, color = Mint) }
+                }
+            }
         } else if (filtered.isEmpty()) {
             EmptyState("No messages found", "Try changing your search or filters.", Icons.Rounded.SearchOff)
         } else {
@@ -387,9 +428,10 @@ private fun ChatViewer(file: File, backupDir: File, onBack: () -> Unit) {
                     if (message.system) {
                         Text(message.body, Modifier.fillMaxWidth().padding(horizontal = 22.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFD8E8E0)).padding(9.dp), color = Color(0xFF52645C), fontSize = 10.sp)
                     } else {
-                        Column(Modifier.fillMaxWidth(), horizontalAlignment = if (message.sender.isBlank()) Alignment.End else Alignment.Start) {
-                            Column(Modifier.widthIn(max = 310.dp).clip(RoundedCornerShape(15.dp)).background(if (message.sender.isBlank()) Color(0xFFD9F5E6) else Color.White).padding(horizontal = 12.dp, vertical = 8.dp)) {
-                                Text(message.sender, color = DarkMint, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        val isMine = myName.isNotBlank() && message.sender == myName
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = if (isMine) Alignment.End else Alignment.Start) {
+                            Column(Modifier.widthIn(max = 310.dp).clip(RoundedCornerShape(15.dp)).background(if (isMine) Color(0xFFD9F5E6) else Color.White).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                if (!isMine) Text(message.sender, color = DarkMint, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 Text(message.body, color = Ink, fontSize = 13.sp, lineHeight = 18.sp)
                                 message.attachment?.let { media ->
                                     Text("📎 ${media.name}", Modifier.clickable { openMediaFile(context, media) }, color = Mint, fontSize = 10.sp)
