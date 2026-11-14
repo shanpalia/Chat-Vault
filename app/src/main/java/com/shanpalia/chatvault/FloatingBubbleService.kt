@@ -30,13 +30,9 @@ class FloatingBubbleService : Service() {
         val badge = ImageView(this).apply {
             setImageResource(R.drawable.chat_vault_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            setPadding(dp(3), dp(3), dp(3), dp(3))
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(16, 47, 42))
-                cornerRadius = dp(22).toFloat()
-                setStroke(dp(2), Color.rgb(25, 181, 143))
-            }
-            elevation = dp(10).toFloat()
+            setPadding(0, 0, 0, 0)
+            background = null
+            elevation = dp(8).toFloat()
             contentDescription = "Chat Vault floating menu"
         }
 
