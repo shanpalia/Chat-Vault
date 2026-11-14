@@ -153,19 +153,13 @@ class FloatingBubbleService : Service() {
     }
 
     private fun openWhatsApp() {
+        // Backup shortcut opens standard WhatsApp first; user exports the selected chat there.
         val launch = packageManager.getLaunchIntentForPackage("com.whatsapp")
         if (launch != null) {
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(launch)
         } else {
-            // If standard WhatsApp is not installed, try WhatsApp Business.
-            val business = packageManager.getLaunchIntentForPackage("com.whatsapp.w4b")
-            if (business != null) {
-                business.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(business)
-            } else {
-                openVault(false)
-            }
+            openVault(false)
         }
     }
 
