@@ -114,13 +114,8 @@ class FloatingBubbleService : Service() {
         }
         action("⌂", "Open App") { openVault(false) }
         action("⬇", "Backup") { openVault(true) }
-        action("×", "Close Bubble") { stopSelf() }
-        action("⏻", "Exit Bubble") {
-            stopSelf()
-            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(home)
-        }
+        action("×", "Close") { /* Close only the menu; keep the floating icon active. */ }
+        action("⏻", "Exit Bubble") { stopSelf() }
 
         val width = dp(240)
         val screenWidth = resources.displayMetrics.widthPixels
