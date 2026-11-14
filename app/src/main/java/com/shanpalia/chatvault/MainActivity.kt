@@ -57,7 +57,8 @@ class MainActivity : ComponentActivity() {
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
         if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {
             startService(Intent(this, FloatingBubbleService::class.java))
-        }\n        val backupDir = File(filesDir, "backups").apply { mkdirs() }
+        }
+        val backupDir = File(filesDir, "backups").apply { mkdirs() }
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Mint, secondary = DarkMint, background = Page, surface = Color.White, onSurface = Ink)) {
                 ChatVaultApp(
