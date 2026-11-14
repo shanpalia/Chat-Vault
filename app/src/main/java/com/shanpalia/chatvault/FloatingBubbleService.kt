@@ -130,7 +130,7 @@ class FloatingBubbleService : Service() {
         }
 
         addAction(R.drawable.ic_float_open, "Open app") { openVault(false) }
-        addAction(R.drawable.ic_float_backup, "Backup") { openVault(true) }
+        addAction(R.drawable.ic_float_backup, "Backup") { openWhatsApp() }
         addAction(R.drawable.ic_float_close, "Close menu") { /* Bubble remains visible and active. */ }
         addAction(R.drawable.ic_float_exit, "Exit bubble") { stopSelf() }
 
@@ -150,6 +150,23 @@ class FloatingBubbleService : Service() {
         }
         menu = frame
         runCatching { windowManager?.addView(frame, params) }.onFailure { menu = null }
+    }
+
+    private fun openWhatsApp() {
+        val launch = packageManager.getLaunchIntentForPackage("com.whatsapp")
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(launch)
+        } else {
+            // If standard WhatsApp is not installed, try WhatsApp Business.
+            val business = packageManager.getLaunchIntentForPackage("com.whatsapp.w4b")
+            if (business != null) {
+                business.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(business)
+            } else {
+                openVault(false)
+            }
+        }
     }
 
     private fun openVault(backup: Boolean) {
