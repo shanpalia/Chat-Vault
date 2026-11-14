@@ -104,7 +104,8 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra("open_backup_picker", false)) requestBackupPicker = true
-        sharedBackupUri = sharedUriFrom(intent)
+        sharedBackupUris = sharedUrisFrom(intent)
+        sharedBackupText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.takeIf { it.isNotBlank() }
     }
 
     private fun importSelected(uri: Uri, directory: File): File? {
