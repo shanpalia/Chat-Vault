@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
-        val backupDir = File(filesDir, "backups").apply { mkdirs() }
+        if (getSharedPreferences("chat_vault_settings", MODE_PRIVATE).getBoolean("floating_enabled", false) && Settings.canDrawOverlays(this)) {\n            startService(Intent(this, FloatingBubbleService::class.java))\n        }\n        val backupDir = File(filesDir, "backups").apply { mkdirs() }
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Mint, secondary = DarkMint, background = Page, surface = Color.White, onSurface = Ink)) {
                 ChatVaultApp(
@@ -108,8 +108,7 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Allow display over other apps, then enable the bubble again.", Toast.LENGTH_LONG).show()
             return
         }
-        val intent = Intent(this, FloatingBubbleService::class.java)
-        if (enable) startService(intent) else stopService(intent)
+        getSharedPreferences("chat_vault_settings", MODE_PRIVATE).edit().putBoolean("floating_enabled", enable).apply()\n        val intent = Intent(this, FloatingBubbleService::class.java)\n        if (enable) startService(intent) else stopService(intent)
         Toast.makeText(this, if (enable) "Floating bubble enabled" else "Floating bubble stopped", Toast.LENGTH_SHORT).show()
     }
 }
@@ -320,19 +319,18 @@ private fun ToolsScreen(modifier: Modifier, onWhatsApp: () -> Unit, onBusiness: 
 
 @Composable
 private fun SettingsScreen(modifier: Modifier, onFloating: (Boolean) -> Unit, onUpdates: () -> Unit) {
-    var floating by remember { mutableStateOf(false) }
-    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    val context = LocalContext.current\n    var floating by remember { mutableStateOf(context.getSharedPreferences("chat_vault_settings", Context.MODE_PRIVATE).getBoolean("floating_enabled", false)) }\n    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("Settings", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.BubbleChart, null, tint = Mint, modifier = Modifier.size(27.dp))
             Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) { Text("Floating bubble", color = Ink, fontWeight = FontWeight.SemiBold); Text("Show a shortcut over other apps", color = Color.Gray, fontSize = 11.sp) }
-            Switch(checked = floating, onCheckedChange = { floating = it; onFloating(it) }, colors = SwitchDefaults.colors(checkedTrackColor = Mint))
+            Column(Modifier.weight(1f)) { Text("Floating bubble", color = Ink, fontWeight = FontWeight.SemiBold); Text("Show the Chat Vault logo on top of other apps. Tap it for Open App, Backup, Close menu or Exit Bubble. Allow Display over other apps permission to use this shortcut.", color = Color.Gray, fontSize = 11.sp, lineHeight = 15.sp) }
+            Switch(checked = floating, onCheckedChange = { enabled -> floating = enabled; onFloating(enabled) }, colors = SwitchDefaults.colors(checkedTrackColor = Mint))
         }
         InfoNote("Storage & privacy", "Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
         InfoNote("Permissions", "The floating shortcut requires Android's Display over other apps permission. File import uses Android's system file picker.")
-        ToolRow("App updates", "Get the latest Chat Vault version from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)
-        InfoNote("About Chat Vault", "Version 1.0 • By PaliaAPK HUB")
+        ToolRow("App updates", "Check and install the latest Chat Vault release from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)
+        InfoNote("About Chat Vault", "Version 1.0.1 • By PaliaAPK HUB")
     }
 }
 
