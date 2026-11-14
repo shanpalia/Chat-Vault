@@ -348,11 +348,48 @@ private fun ToolsScreen(modifier: Modifier, onWhatsApp: () -> Unit, onBusiness: 
 
 @Composable
 private fun SettingsScreen(modifier: Modifier, onUpdates: () -> Unit) {
-    Column(modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(
+        modifier.fillMaxSize().padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
         Text("Settings", fontSize = 22.sp, color = Ink, fontWeight = FontWeight.Bold)
+
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Backup, null, tint = Mint, modifier = Modifier.size(25.dp))
+                Spacer(Modifier.width(9.dp))
+                Text("WhatsApp chat backup kaise lein?", color = Ink, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+            Text("1. WhatsApp ya WhatsApp Business kholen aur jis contact ki chat save karni hai, woh chat kholen.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+            Text("2. Upar ⋮ menu par tap karein → More → Export chat.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+            Text("3. Without media chunen (sirf messages) ya Include media chunen (messages ke saath media; WhatsApp ZIP bana sakta hai).", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+            Text("4. Share menu mein Chat Vault chunen. Agar Chat Vault na dikhe, Save to Files karein; phir Chat Vault → Backups → Import another backup se TXT/ZIP file chunen.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+            Text("5. Import hone ke baad Backups tab mein chat milegi. Use kholkar messages search aur browse kar sakte hain.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+            Text("Note: WhatsApp se Export Chat aapko khud shuru karna hota hai. Chat Vault WhatsApp ki private chats ko apne-aap access nahi kar sakta.", color = DarkMint, fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+        }
+
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("App update", color = Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Latest Chat Vault version aur APK dekhne ke liye neeche button dabayein.", color = Color.Gray, fontSize = 12.sp)
+            Button(
+                onClick = onUpdates,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Mint)
+            ) {
+                Icon(Icons.Rounded.SystemUpdate, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Check for App Updates")
+            }
+        }
+
         InfoNote("Storage & privacy", "Backups are stored locally in this app's private storage. Uninstalling Chat Vault removes its local app data. Keep another copy of important exports.")
-        InfoNote("Import chats", "In WhatsApp, open a chat → ⋮ → More → Export chat, then share the TXT or ZIP file with Chat Vault.")
-        ToolRow("App updates", "Check and install the latest Chat Vault release from PaliaAPK HUB", Icons.Rounded.SystemUpdate, onUpdates)
         InfoNote("About Chat Vault", "Version 1.0.1 • By PaliaAPK HUB")
     }
 }
