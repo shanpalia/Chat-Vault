@@ -28,7 +28,7 @@ object ChatParser {
         "dd.MM.yy, HH:mm", "dd.MM.yyyy, HH:mm"
     )
 
-    fun import(file: File, destination: File): ImportedChat {
+    fun load(file: File, destination: File): ImportedChat {
         val textFile = if (file.extension.equals("zip", true)) {
             val out = File(destination, "extracted_${System.currentTimeMillis()}").apply { mkdirs() }
             ZipFile(file).use { zip ->
