@@ -74,8 +74,15 @@ import java.util.zip.ZipOutputStream
 
 private const val CHAT_VAULT_NOTIFICATION_CHANNEL = "chat_vault_backup_updates"
 private const val CHAT_VAULT_LIVE_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-1717784184671933/3602440218"
-private const val CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+private const val CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID = "/21775744923/example/interstitial"
 private const val CHAT_VAULT_LIVE_BANNER_AD_UNIT_ID = "ca-app-pub-1717784184671933/8295916581"
+private const val CHAT_VAULT_TEST_BANNER_AD_UNIT_ID = "/21775744923/example/adaptive-banner"
+
+private val chatVaultInterstitialAdUnitId: String
+    get() = if (BuildConfig.DEBUG) CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID else CHAT_VAULT_LIVE_INTERSTITIAL_AD_UNIT_ID
+
+private val chatVaultBannerAdUnitId: String
+    get() = if (BuildConfig.DEBUG) CHAT_VAULT_TEST_BANNER_AD_UNIT_ID else CHAT_VAULT_LIVE_BANNER_AD_UNIT_ID
 
 private fun showBackupNotification(context: Context, title: String, message: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -122,7 +129,7 @@ class MainActivity : ComponentActivity() {
     private fun loadChatVaultInterstitial() {
         if (interstitialAd != null) return
         InterstitialAd.load(
-            AdRequest.Builder(CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID).build(),
+            AdRequest.Builder(chatVaultInterstitialAdUnitId).build(),
             object : AdLoadCallback<InterstitialAd> {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
@@ -354,7 +361,7 @@ private fun ChatVaultApp(
         },
         bottomBar = {
             Column(Modifier.fillMaxWidth().background(Color.White)) {
-                if (adsReady) ChatVaultTestBanner()
+                if (adsReady) ChatVaultBanner()
                 NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
                     Tab.values().forEach { item ->
                         val icon = when (item) {
@@ -742,7 +749,7 @@ private fun openMediaFile(context: Context, file: File) {
 
  
 @Composable
-private fun ChatVaultTestBanner() {
+private fun ChatVaultBanner() {
     val context = LocalContext.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val adView = remember(context) { AdView(context) }
@@ -757,7 +764,7 @@ private fun ChatVaultTestBanner() {
 
     LaunchedEffect(adSize) {
         val request = BannerAdRequest.Builder(
-            CHAT_VAULT_LIVE_BANNER_AD_UNIT_ID,
+            chatVaultBannerAdUnitId,
             adSize
         ).build()
         adView.loadAd(request, object : AdLoadCallback<BannerAd> {
