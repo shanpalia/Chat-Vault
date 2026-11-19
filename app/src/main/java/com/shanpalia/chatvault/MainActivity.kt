@@ -1,5 +1,8 @@
 package com.shanpalia.chatvault
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.content.Intent
 import android.content.Context
 import androidx.core.content.FileProvider
@@ -155,6 +158,16 @@ private fun ChatVaultApp(
     var toast by remember { mutableStateOf<String?>(null) }
     var showExitDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* The user can change this later in Android Settings. */ }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     BackHandler {
         when {
             selectedFile != null -> selectedFile = null
