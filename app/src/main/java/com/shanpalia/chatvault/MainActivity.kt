@@ -320,8 +320,9 @@ private fun BackupScreen(modifier: Modifier, backups: List<File>, onImport: () -
         }
         Button(onClick = onImport, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Rounded.Add, null); Text("Import another backup") }
         OutlinedButton(onClick = onExport, enabled = backups.isNotEmpty(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) { Icon(Icons.Rounded.FolderZip, null); Spacer(Modifier.width(8.dp)); Text("Export all backups as ZIP") }
+        InfoNote("Deleted chat protection", "If you imported a chat here before it was deleted from WhatsApp, this saved copy stays in Chat Vault and remains available below. Chat Vault cannot recover chats that were never exported or imported before deletion.")
         Spacer(Modifier.height(14.dp))
-        if (backups.isEmpty()) EmptyState("Nothing saved yet", "Your imported chat backups will appear here.", Icons.Rounded.Archive)
+        if (backups.isEmpty()) EmptyState("Nothing saved yet", "Import a chat export to keep a copy safe, even if it is later deleted from WhatsApp.", Icons.Rounded.Archive)
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) { items(backups, key = { it.absolutePath }) { BackupRow(it) { onOpen(it) } } }
     }
 }
