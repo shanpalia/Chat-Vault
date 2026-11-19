@@ -1,0 +1,17 @@
+workflows:
+  chat-vault-android:
+    name: Chat Vault Android APK
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      java: 17
+    scripts:
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+      - name: Build Chat Vault debug APK
+        script: |
+          gradle --version
+          gradle assembleDebug
+    artifacts:
+      - app/build/outputs/apk/debug/app-debug.apk
