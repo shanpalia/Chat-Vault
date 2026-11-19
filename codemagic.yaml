@@ -6,7 +6,7 @@ workflows:
     environment:
       java: 17
       android_signing:
-        - keystore_reference: chatvault_keystore
+        - chatvault_keystore
     scripts:
       - name: Set Android SDK location
         script: |
