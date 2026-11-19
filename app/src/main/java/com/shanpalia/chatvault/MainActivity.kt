@@ -171,7 +171,7 @@ class MainActivity : ComponentActivity() {
         Thread {
             MobileAds.initialize(
                 this,
-                InitializationConfig.Builder("ca-app-pub-3940256099942544~3347511713").build()
+                InitializationConfig.Builder("ca-app-pub-1717784184671933~9904511724").build()
             ) {
                 runOnUiThread { adsReady.value = true }
                 loadChatVaultInterstitial()
