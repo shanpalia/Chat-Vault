@@ -59,6 +59,9 @@ import com.google.android.libraries.ads.mobile.sdk.banner.AdView
 import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
 import com.google.android.libraries.ads.mobile.sdk.banner.BannerAd
 import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAd
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAdEventCallback
 import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
 import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import java.io.File
@@ -70,6 +73,9 @@ import java.util.zip.ZipOutputStream
 
 
 private const val CHAT_VAULT_NOTIFICATION_CHANNEL = "chat_vault_backup_updates"
+private const val CHAT_VAULT_LIVE_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-1717784184671933/3602440218"
+private const val CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+// Keep the test unit active during development; switch to the live unit only for the production release.
 
 private fun showBackupNotification(context: Context, title: String, message: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -108,9 +114,40 @@ private enum class Tab(val title: String) { HOME("Home"), BACKUPS("Backups"), CH
 
 class MainActivity : ComponentActivity() {
     private val adsReady = mutableStateOf(false)
+    private var interstitialAd: InterstitialAd? = null
     private var requestBackupPicker by mutableStateOf(false)
     private var sharedBackupUris by mutableStateOf<List<Uri>>(emptyList())
     private var sharedBackupText by mutableStateOf<String?>(null)
+
+    private fun loadChatVaultInterstitial() {
+        if (interstitialAd != null) return
+        InterstitialAd.load(
+            AdRequest.Builder(CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID).build(),
+            object : AdLoadCallback<InterstitialAd> {
+                override fun onAdLoaded(ad: InterstitialAd) {
+                    interstitialAd = ad
+                }
+                override fun onAdFailedToLoad(adError: com.google.android.libraries.ads.mobile.sdk.common.LoadAdError) {
+                    interstitialAd = null
+                }
+            }
+        )
+    }
+
+    private fun showChatVaultInterstitialAfterExport() {
+        val ad = interstitialAd
+        if (ad == null) return
+        interstitialAd = null
+        ad.adEventCallback = object : InterstitialAdEventCallback {
+            override fun onAdDismissedFullScreenContent() {
+                loadChatVaultInterstitial()
+            }
+            override fun onAdFailedToShowFullScreenContent(fullScreenContentError: com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError) {
+                loadChatVaultInterstitial()
+            }
+        }
+        ad.show(this)
+    }
 
     @Suppress("DEPRECATION")
     private fun sharedUrisFrom(intent: Intent?): List<Uri> {
@@ -135,7 +172,10 @@ class MainActivity : ComponentActivity() {
             MobileAds.initialize(
                 this,
                 InitializationConfig.Builder("ca-app-pub-3940256099942544~3347511713").build()
-            ) { runOnUiThread { adsReady.value = true } }
+            ) {
+                runOnUiThread { adsReady.value = true }
+                loadChatVaultInterstitial()
+            }
         }.start()
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
         sharedBackupUris = sharedUrisFrom(intent)
@@ -146,6 +186,7 @@ class MainActivity : ComponentActivity() {
                 ChatVaultApp(
                     backupDir = backupDir,
                     adsReady = adsReady.value,
+                    onExportCompleted = { showChatVaultInterstitialAfterExport() },
                     importFile = { uri -> importSelected(uri, backupDir) },
                     openWhatsApp = { business -> launchWhatsApp(business) },
                     openHubLink = { url -> openExternalUrl(url) },
@@ -196,6 +237,7 @@ class MainActivity : ComponentActivity() {
 private fun ChatVaultApp(
     backupDir: File,
     adsReady: Boolean,
+    onExportCompleted: () -> Unit,
     importFile: (Uri) -> File?,
     openWhatsApp: (Boolean) -> Unit,
     openHubLink: (String) -> Unit,
@@ -239,7 +281,10 @@ private fun ChatVaultApp(
         if (uri != null) {
             val ok = exportBackups(context, backupDir.listFiles()?.filter { it.isFile }.orEmpty(), uri)
             toast = if (ok) "All backups exported as ZIP" else "Could not export backups"
-            if (ok) showBackupNotification(context, "Backup export complete", "Your Chat Vault backups were exported as a ZIP file.")
+            if (ok) {
+                showBackupNotification(context, "Backup export complete", "Your Chat Vault backups were exported as a ZIP file.")
+                onExportCompleted()
+            }
         }
     }
     val backups = remember(refresh) { backupDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.sortedByDescending { it.lastModified() }.orEmpty() }
