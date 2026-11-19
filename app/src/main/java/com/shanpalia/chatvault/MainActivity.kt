@@ -75,7 +75,7 @@ import java.util.zip.ZipOutputStream
 private const val CHAT_VAULT_NOTIFICATION_CHANNEL = "chat_vault_backup_updates"
 private const val CHAT_VAULT_LIVE_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-1717784184671933/3602440218"
 private const val CHAT_VAULT_TEST_INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
-// Keep the test unit active during development; switch to the live unit only for the production release.
+private const val CHAT_VAULT_LIVE_BANNER_AD_UNIT_ID = "ca-app-pub-1717784184671933/8295916581"
 
 private fun showBackupNotification(context: Context, title: String, message: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -757,7 +757,7 @@ private fun ChatVaultTestBanner() {
 
     LaunchedEffect(adSize) {
         val request = BannerAdRequest.Builder(
-            "ca-app-pub-3940256099942544/9214589741",
+            CHAT_VAULT_LIVE_BANNER_AD_UNIT_ID,
             adSize
         ).build()
         adView.loadAd(request, object : AdLoadCallback<BannerAd> {
