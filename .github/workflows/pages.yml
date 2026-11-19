@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'web.html'
       - 'privacy.html'
       - 'docs/**'
       - '.github/workflows/pages.yml'
