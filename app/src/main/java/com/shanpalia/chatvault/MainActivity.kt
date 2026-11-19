@@ -2,6 +2,10 @@ package com.shanpalia.chatvault
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import android.os.Build
 import android.content.Intent
 import android.content.Context
@@ -52,6 +56,36 @@ import java.util.Date
 import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+
+
+private const val CHAT_VAULT_NOTIFICATION_CHANNEL = "chat_vault_backup_updates"
+
+private fun showBackupNotification(context: Context, title: String, message: String) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) return
+
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = NotificationChannel(
+            CHAT_VAULT_NOTIFICATION_CHANNEL,
+            "Backup updates",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply { description = "Notifications about imported and exported chat backups" }
+        manager.createNotificationChannel(channel)
+    }
+
+    val notification = NotificationCompat.Builder(context, CHAT_VAULT_NOTIFICATION_CHANNEL)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentTitle(title)
+        .setContentText(message)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setAutoCancel(true)
+        .build()
+
+    runCatching { NotificationManagerCompat.from(context).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification) }
+}
 
 private val Mint = Color(0xFF16A887)
 private val DarkMint = Color(0xFF0D725E)
@@ -178,13 +212,14 @@ private fun ChatVaultApp(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             val file = importFile(uri)
-            if (file != null) { refresh++; toast = "Backup imported successfully" } else toast = "Could not import this file"
+            if (file != null) { refresh++; toast = "Backup imported successfully"; showBackupNotification(context, "Backup imported", "Your chat backup is saved in Chat Vault.") } else toast = "Could not import this file"
         }
     }
     val zipExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) {
             val ok = exportBackups(context, backupDir.listFiles()?.filter { it.isFile }.orEmpty(), uri)
             toast = if (ok) "All backups exported as ZIP" else "Could not export backups"
+            if (ok) showBackupNotification(context, "Backup export complete", "Your Chat Vault backups were exported as a ZIP file.")
         }
     }
     val backups = remember(refresh) { backupDir.listFiles()?.filter { it.isFile && !it.name.startsWith(".") }?.sortedByDescending { it.lastModified() }.orEmpty() }
@@ -200,11 +235,12 @@ private fun ChatVaultApp(
         if (saved > 0) {
             refresh++
             toast = if (saved == 1) "WhatsApp chat received and saved" else "$saved shared files saved"
+            showBackupNotification(context, "Chat backup saved", if (saved == 1) "A shared chat backup was saved in Chat Vault." else "$saved shared files were saved in Chat Vault.")
             tab = Tab.BACKUPS
         } else if (sharedBackupText != null) {
             val textFile = File(backupDir, "${System.currentTimeMillis()}-shared-chat.txt")
             runCatching { textFile.writeText(sharedBackupText, Charsets.UTF_8); saved = 1 }
-            if (saved > 0) { refresh++; toast = "Shared chat text saved"; tab = Tab.BACKUPS }
+            if (saved > 0) { refresh++; toast = "Shared chat text saved"; showBackupNotification(context, "Chat backup saved", "Shared chat text was saved in Chat Vault."); tab = Tab.BACKUPS }
             else toast = "Could not save the shared chat"
         } else if (sharedBackupUris.isNotEmpty()) toast = "Could not import the shared chat file"
         if (sharedBackupUris.isNotEmpty() || sharedBackupText != null) onSharedBackupHandled()
