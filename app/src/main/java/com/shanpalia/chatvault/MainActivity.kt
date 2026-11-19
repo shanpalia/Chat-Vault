@@ -76,7 +76,7 @@ private fun showBackupNotification(context: Context, title: String, message: Str
     }
 
     val notification = NotificationCompat.Builder(context, CHAT_VAULT_NOTIFICATION_CHANNEL)
-        .setSmallIcon(R.drawable.ic_notification)
+        .setSmallIcon(android.R.drawable.stat_notify_chat)
         .setContentTitle(title)
         .setContentText(message)
         .setStyle(NotificationCompat.BigTextStyle().bigText(message))
