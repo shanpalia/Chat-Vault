@@ -107,6 +107,7 @@ private val ChatBg = Color(0xFFE8F1EC)
 private enum class Tab(val title: String) { HOME("Home"), BACKUPS("Backups"), CHATS("Chats"), TOOLS("Tools"), SETTINGS("Settings") }
 
 class MainActivity : ComponentActivity() {
+    private val adsReady = mutableStateOf(false)
     private var requestBackupPicker by mutableStateOf(false)
     private var sharedBackupUris by mutableStateOf<List<Uri>>(emptyList())
     private var sharedBackupText by mutableStateOf<String?>(null)
@@ -134,7 +135,7 @@ class MainActivity : ComponentActivity() {
             MobileAds.initialize(
                 this,
                 InitializationConfig.Builder("ca-app-pub-3940256099942544~3347511713").build()
-            ) { }
+            ) { runOnUiThread { adsReady.value = true } }
         }.start()
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
         sharedBackupUris = sharedUrisFrom(intent)
@@ -144,6 +145,7 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = lightColorScheme(primary = Mint, secondary = DarkMint, background = Page, surface = Color.White, onSurface = Ink)) {
                 ChatVaultApp(
                     backupDir = backupDir,
+                    adsReady = adsReady.value,
                     importFile = { uri -> importSelected(uri, backupDir) },
                     openWhatsApp = { business -> launchWhatsApp(business) },
                     openHubLink = { url -> openExternalUrl(url) },
@@ -193,6 +195,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun ChatVaultApp(
     backupDir: File,
+    adsReady: Boolean,
     importFile: (Uri) -> File?,
     openWhatsApp: (Boolean) -> Unit,
     openHubLink: (String) -> Unit,
@@ -306,7 +309,7 @@ private fun ChatVaultApp(
         },
         bottomBar = {
             Column(Modifier.fillMaxWidth().background(Color.White)) {
-                ChatVaultTestBanner()
+                if (adsReady) ChatVaultTestBanner()
                 NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
                     Tab.values().forEach { item ->
                         val icon = when (item) {
