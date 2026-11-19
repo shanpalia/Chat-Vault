@@ -1,10 +1,12 @@
 workflows:
   chat-vault-android:
-    name: Chat Vault Android APK
+    name: Chat Vault Signed Android Release
     max_build_duration: 60
     instance_type: linux_x2
     environment:
       java: 17
+      android_signing:
+        - keystore_reference: chatvault_keystore
     scripts:
       - name: Set Android SDK location
         script: |
@@ -13,8 +15,14 @@ workflows:
         script: |
           curl -fL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle-8.9-bin.zip
           unzip -q /tmp/gradle-8.9-bin.zip -d /tmp
-      - name: Build Chat Vault debug APK
+      - name: Build signed release APK and AAB
         script: |
-          /tmp/gradle-8.9/bin/gradle --no-daemon assembleDebug
+          test -n "$CM_KEYSTORE_PATH"
+          test -f "$CM_KEYSTORE_PATH"
+          test -n "$CM_KEYSTORE_PASSWORD"
+          test -n "$CM_KEY_ALIAS"
+          test -n "$CM_KEY_PASSWORD"
+          /tmp/gradle-8.9/bin/gradle --no-daemon clean assembleRelease bundleRelease
     artifacts:
-      - app/build/outputs/apk/debug/app-debug.apk
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab
