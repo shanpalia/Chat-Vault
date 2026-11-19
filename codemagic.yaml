@@ -15,14 +15,13 @@ workflows:
         script: |
           curl -fL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle-8.9-bin.zip
           unzip -q /tmp/gradle-8.9-bin.zip -d /tmp
-      - name: Build signed release APK and AAB
+      - name: Build signed release APK
         script: |
           test -n "$CM_KEYSTORE_PATH"
           test -f "$CM_KEYSTORE_PATH"
           test -n "$CM_KEYSTORE_PASSWORD"
           test -n "$CM_KEY_ALIAS"
           test -n "$CM_KEY_PASSWORD"
-          /tmp/gradle-8.9/bin/gradle --no-daemon clean assembleRelease bundleRelease
+          /tmp/gradle-8.9/bin/gradle --no-daemon clean assembleRelease
     artifacts:
       - app/build/outputs/apk/release/*.apk
-      - app/build/outputs/bundle/release/*.aab
