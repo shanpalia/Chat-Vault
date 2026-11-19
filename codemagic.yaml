@@ -25,5 +25,7 @@ workflows:
           test -n "$CM_KEY_ALIAS"
           test -n "$CM_KEY_PASSWORD"
           /tmp/gradle-8.9/bin/gradle --no-daemon clean assembleRelease
+          mkdir -p "$CM_BUILD_DIR/output"
+          cp app/build/outputs/apk/release/*.apk "$CM_BUILD_DIR/output/Chat-Vault.apk"
     artifacts:
-      - app/build/outputs/apk/release/*.apk
+      - output/Chat-Vault.apk
