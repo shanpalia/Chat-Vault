@@ -27,20 +27,70 @@
 <footer><div class="footerBrand"><svg viewBox="0 0 108 108" aria-label="Chat Vault logo"><path fill="#19B58F" d="M54 12C33 12 16 28 16 49c0 12 6 22 15 29l-3 17 18-9c3 1 6 1 8 1 21 0 38-16 38-37S75 12 54 12Z"/><path fill="#fff" d="M54 24c-14 0-25 11-25 25 0 8 4 15 10 19l-2 10 11-6c2 1 4 1 6 1 14 0 25-11 25-24S68 24 54 24Z"/><path fill="#19B58F" d="M45 39c1-2 2-2 3-2h2c1 0 2 1 2 2l3 7c0 1 0 2-1 3l-2 2c2 4 5 7 9 9l2-2c1-1 2-1 3 0l6 3c1 1 1 2 1 3-1 4-4 6-8 6-8 0-23-13-23-23 0-4 1-7 3-8Z"/><path fill="#102F2A" d="m68 13 4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1Z"/><path fill="#fff" d="m78 49 4 4 8-9 5 4-13 15-9-9Z"/></svg><span>CHAT VAULT</span></div><div class="footerTag">BY PALIAAPK HUB</div><div class="footerLine"></div><div class="footerCopy">Your conversations. Your memories. <strong>Your privacy.</strong><br>Crafted with care by <strong>ShanPalia</strong></div><div class="footerLinks"><a href="index.html">Home</a> · <a href="privacy.html">Privacy Policy</a></div><div class="footerBottom">© 2026 PALIAAPK HUB · CHAT VAULT WEB · ALL RIGHTS RESERVED</div></footer>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-const fileInput=document.getElementById('file'),body=document.getElementById('messages'),search=document.getElementById('search'),statusEl=document.getElementById('status');let parsed=[],mediaItems=[],fileItems=[],objectUrls=[];
+const fileInput=document.getElementById('file');
+const body=document.getElementById('messages');
+const search=document.getElementById('search');
+const statusEl=document.getElementById('status');
+const dropZone=document.getElementById('dropZone');
+let parsed=[],mediaItems=[],fileItems=[],objectUrls=[];
 const mediaExt=/\.(jpe?g|png|gif|webp|bmp|mp4|mov|webm|3gp|m4v|mp3|m4a|ogg|opus|wav|aac)$/i;
 function clearUrls(){objectUrls.forEach(u=>URL.revokeObjectURL(u));objectUrls=[]}
 function sectionTitle(label,count){const h=document.createElement('div');h.style.cssText='font-weight:850;color:#147e65;margin:22px 0 12px;padding-bottom:8px;border-bottom:1px solid #dceee7';h.textContent=label+' · '+count;body.appendChild(h)}
-function render(query=''){clearUrls();body.innerHTML='';const q=query.toLowerCase();const rows=parsed.filter(m=>(m.text+' '+m.sender+' '+m.date).toLowerCase().includes(q));const media=mediaItems.filter(x=>x.name.toLowerCase().includes(q));const files=fileItems.filter(x=>x.name.toLowerCase().includes(q));if(!rows.length&&!media.length&&!files.length){body.innerHTML='<div class="empty"><div><strong>No matching content</strong>Search another word or import a WhatsApp ZIP export.</div></div>';return}
-if(rows.length){sectionTitle('CONVERSATION',rows.length);for(const m of rows){const el=document.createElement('div');el.className='msg';const text=document.createElement('span');text.textContent=m.text;el.appendChild(text);const meta=document.createElement('small');meta.className='meta';meta.textContent=[m.sender,m.date].filter(Boolean).join(' · ');el.appendChild(meta);body.appendChild(el)}}
-if(media.length){sectionTitle('PHOTOS · VIDEOS · AUDIO',media.length);const grid=document.createElement('div');grid.className='mediaGrid';for(const item of media){const card=document.createElement('div');card.className='mediaCard';const url=URL.createObjectURL(item.blob);objectUrls.push(url);let preview;if(item.type.startsWith('image/')){preview=document.createElement('img');preview.src=url}else if(item.type.startsWith('video/')){preview=document.createElement('video');preview.src=url;preview.controls=true}else{preview=document.createElement('div');preview.style.cssText='height:115px;display:grid;place-items:center;background:#edf7f2;border-radius:9px;font-size:30px';preview.textContent='♫'}card.appendChild(preview);const link=document.createElement('a');link.href=url;link.download=item.name.split('/').pop();link.textContent=item.name.split('/').pop();card.appendChild(link);grid.appendChild(card)}body.appendChild(grid)}
-if(files.length){sectionTitle('DOCUMENTS · OTHER FILES',files.length);for(const item of files){const row=document.createElement('div');row.className='fileRow';const name=document.createElement('span');name.textContent=item.name;const link=document.createElement('a');const url=URL.createObjectURL(item.blob);objectUrls.push(url);link.href=url;link.download=item.name.split('/').pop();link.textContent='Download';row.append(name,link);body.appendChild(row)}}}
-function parseChat(text){const lines=text.replace(/^\uFEFF/,'').replace(/[\u200e\u200f\u202a-\u202e]/g,'').split(/\r?\n/);const out=[];const patterns=[/^\[?(\d{1,4}[\/.-]\d{1,2}[\/.-]\d{1,4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM|am|pm)?)\]?\s+-\s+([^:]+):\s?(.*)$/,/^\[?(\d{1,4}[\/.-]\d{1,2}[\/.-]\d{1,4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM|am|pm)?)\]?\s+([^:]+):\s?(.*)$/];for(const line of lines){let m=null;for(const re of patterns){m=line.match(re);if(m)break}if(m)out.push({date:m[1],sender:m[2].trim(),text:m[3]});else if(out.length)out[out.length-1].text+='\n'+line;else if(line.trim())out.push({date:'',sender:'',text:line})}return out}
-async function loadZip(file){if(!window.JSZip)throw new Error('ZIP library load nahi hui. Internet connection check karke page refresh karein, ya TXT export upload karein.');const zip=await JSZip.loadAsync(file);const entries=Object.values(zip.files).filter(x=>!x.dir&&!x.name.startsWith('__MACOSX/')&&!x.name.endsWith('.DS_Store'));const txts=entries.filter(x=>x.name.toLowerCase().endsWith('.txt')).sort((a,b)=>{const score=x=>(/chat|whatsapp|conversation/i.test(x.name)?1000000:0);return score(b)+(b._data?.uncompressedSize||0)-score(a)-(a._data?.uncompressedSize||0)});const txt=txts[0];if(!txt)throw new Error('Is ZIP mein WhatsApp chat ki TXT file nahi mili. WhatsApp se Export chat karke original ZIP select karein.');statusEl.textContent='ZIP ke andar files read ho rahi hain…';const text=await txt.async('text');mediaItems=[];fileItems=[];for(const entry of entries){if(entry===txt)continue;const name=entry.name;const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase()||'';const blob=await entry.async('blob');const mime=({jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',3gp:'video/3gpp',m4v:'video/mp4',mp3:'audio/mpeg',m4a:'audio/mp4',ogg:'audio/ogg',opus:'audio/ogg',wav:'audio/wav',aac:'audio/aac',pdf:'application/pdf'})[ext]||'application/octet-stream';const item={name,blob,type:mime};if(mediaExt.test(name))mediaItems.push(item);else fileItems.push(item)}return text}
-async function importFile(f){if(!f)return;if(!/\.(txt|zip)$/i.test(f.name)){statusEl.textContent='Please select a .TXT or .ZIP export file.';return}statusEl.textContent='Reading '+f.name+'…';document.getElementById('fileInfo').textContent='Import in progress…';clearUrls();try{let text;if(f.name.toLowerCase().endsWith('.zip'))text=await loadZip(f);else{text=await f.text();mediaItems=[];fileItems=[]}parsed=parseChat(text);document.getElementById('chatName').childNodes[0].textContent='Chat Vault';document.getElementById('chatSub').textContent=f.name+' · '+parsed.length+' messages';document.getElementById('fileInfo').textContent=f.name+' · '+parsed.length+' messages · '+mediaItems.length+' media · '+fileItems.length+' files';search.disabled=false;search.value='';render();statusEl.textContent='Import complete · '+parsed.length+' messages · '+mediaItems.length+' media · '+fileItems.length+' files';if(!parsed.length)body.innerHTML='<div class="empty"><div><strong>Chat text format not recognized</strong>ZIP khul gaya, lekin message format match nahi hua. Export TXT ko check karein.</div></div>'}catch(e){console.error(e);statusEl.textContent='Import failed · '+e.message;document.getElementById('fileInfo').textContent=e.message;body.innerHTML='<div class="empty"><div><strong>Could not open this export</strong>'+e.message+'</div></div>'}}
+function render(query=''){
+ clearUrls();body.innerHTML='';
+ const q=query.toLowerCase();
+ const rows=parsed.filter(m=>(m.text+' '+m.sender+' '+m.date).toLowerCase().includes(q));
+ const media=mediaItems.filter(x=>x.name.toLowerCase().includes(q));
+ const files=fileItems.filter(x=>x.name.toLowerCase().includes(q));
+ if(!rows.length&&!media.length&&!files.length){body.innerHTML='<div class="empty"><div><strong>No matching content</strong>Search another word or import a WhatsApp ZIP export.</div></div>';return}
+ if(rows.length){sectionTitle('CONVERSATION',rows.length);for(const m of rows){const el=document.createElement('div');el.className='msg';const t=document.createElement('span');t.textContent=m.text;el.appendChild(t);const meta=document.createElement('small');meta.className='meta';meta.textContent=[m.sender,m.date].filter(Boolean).join(' · ');el.appendChild(meta);body.appendChild(el)}}
+ if(media.length){sectionTitle('PHOTOS · VIDEOS · AUDIO',media.length);const grid=document.createElement('div');grid.className='mediaGrid';for(const item of media){const card=document.createElement('div');card.className='mediaCard';const url=URL.createObjectURL(item.blob);objectUrls.push(url);let preview;if(item.type.startsWith('image/')){preview=document.createElement('img');preview.src=url}else if(item.type.startsWith('video/')){preview=document.createElement('video');preview.src=url;preview.controls=true}else{preview=document.createElement('div');preview.style.cssText='height:115px;display:grid;place-items:center;background:#edf7f2;border-radius:9px;font-size:30px';preview.textContent='♫'}card.appendChild(preview);const link=document.createElement('a');link.href=url;link.download=item.name.split('/').pop();link.textContent=item.name.split('/').pop();card.appendChild(link);grid.appendChild(card)}body.appendChild(grid)}
+ if(files.length){sectionTitle('DOCUMENTS · OTHER FILES',files.length);for(const item of files){const row=document.createElement('div');row.className='fileRow';const name=document.createElement('span');name.textContent=item.name;const link=document.createElement('a');const url=URL.createObjectURL(item.blob);objectUrls.push(url);link.href=url;link.download=item.name.split('/').pop();link.textContent='Download';row.append(name,link);body.appendChild(row)}}
+}
+function parseChat(text){
+ const lines=text.replace(/^\uFEFF/,'').replace(/[\u200e\u200f\u202a-\u202e]/g,'').split(/\r?\n/);
+ const out=[];
+ const patterns=[
+  /^\[?(\d{1,4}[\/.-]\d{1,2}[\/.-]\d{1,4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM|am|pm)?)\]?\s+-\s+([^:]+):\s?(.*)$/,
+  /^\[?(\d{1,4}[\/.-]\d{1,2}[\/.-]\d{1,4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM|am|pm)?)\]?\s+([^:]+):\s?(.*)$/
+ ];
+ for(const line of lines){let m=null;for(const re of patterns){m=line.match(re);if(m)break}if(m)out.push({date:m[1],sender:m[2].trim(),text:m[3]});else if(out.length)out[out.length-1].text+='\n'+line;else if(line.trim())out.push({date:'',sender:'',text:line})}
+ return out;
+}
+async function loadZip(file){
+ if(!window.JSZip)throw new Error('ZIP library load nahi hui. Internet connection check karke page refresh karein, ya TXT export upload karein.');
+ const zip=await JSZip.loadAsync(file);
+ const entries=Object.values(zip.files).filter(x=>!x.dir&&!x.name.startsWith('__MACOSX/')&&!x.name.endsWith('.DS_Store'));
+ const txts=entries.filter(x=>x.name.toLowerCase().endsWith('.txt')).sort((a,b)=>{const score=x=>(/chat|whatsapp|conversation/i.test(x.name)?1000000:0);return score(b)+(b._data?.uncompressedSize||0)-score(a)-(a._data?.uncompressedSize||0)});
+ const txt=txts[0];
+ if(!txt)throw new Error('Is ZIP mein WhatsApp chat ki TXT file nahi mili. WhatsApp se Export chat karke original ZIP select karein.');
+ statusEl.textContent='ZIP ke andar files read ho rahi hain…';
+ const text=await txt.async('text');mediaItems=[];fileItems=[];
+ for(const entry of entries){if(entry===txt)continue;const name=entry.name;const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase()||'';const blob=await entry.async('blob');const mime=({jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',3gp:'video/3gpp',m4v:'video/mp4',mp3:'audio/mpeg',m4a:'audio/mp4',ogg:'audio/ogg',opus:'audio/ogg',wav:'audio/wav',aac:'audio/aac',pdf:'application/pdf'})[ext]||'application/octet-stream';const item={name,blob,type:mime};if(mediaExt.test(name))mediaItems.push(item);else fileItems.push(item)}
+ return text;
+}
+async function importFile(file){
+ if(!file)return;
+ if(!/\.(txt|zip)$/i.test(file.name)){statusEl.textContent='Please select a .TXT or .ZIP export file.';return}
+ statusEl.textContent='Reading '+file.name+'…';document.getElementById('fileInfo').textContent='Import in progress…';clearUrls();
+ try{
+  let text;
+  if(file.name.toLowerCase().endsWith('.zip'))text=await loadZip(file);else{text=await file.text();mediaItems=[];fileItems=[]}
+  parsed=parseChat(text);
+  document.getElementById('chatName').childNodes[0].textContent='Chat Vault';
+  document.getElementById('chatSub').textContent=file.name+' · '+parsed.length+' messages';
+  document.getElementById('fileInfo').textContent=file.name+' · '+parsed.length+' messages · '+mediaItems.length+' media · '+fileItems.length+' files';
+  search.disabled=false;search.value='';render();
+  statusEl.textContent='Import complete · '+parsed.length+' messages · '+mediaItems.length+' media · '+fileItems.length+' files';
+  if(!parsed.length)body.innerHTML='<div class="empty"><div><strong>Chat text format not recognized</strong>ZIP khul gaya, lekin message format match nahi hua. Export TXT ko check karein.</div></div>';
+ }catch(e){console.error(e);statusEl.textContent='Import failed · '+e.message;document.getElementById('fileInfo').textContent=e.message;body.innerHTML='<div class="empty"><div><strong>Could not open this export</strong>'+e.message+'</div></div>'}
+}
 fileInput.addEventListener('change',async()=>{await importFile(fileInput.files[0]);fileInput.value=''});
-const dropZone=document.getElementById('dropZone');['dragenter','dragover'].forEach(type=>dropZone.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();dropZone.classList.add('dragover')}));['dragleave','drop'].forEach(type=>dropZone.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();dropZone.classList.remove('dragover')}));dropZone.addEventListener('drop',e=>{const f=e.dataTransfer?.files?.[0];if(f)importFile(f)});
-document.addEventListener('dragover',e=>e.preventDefault());document.addEventListener('drop',e=>{if(!dropZone.contains(e.target))e.preventDefault()});
+['dragenter','dragover'].forEach(type=>dropZone.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();dropZone.classList.add('dragover')}));
+['dragleave','drop'].forEach(type=>dropZone.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();dropZone.classList.remove('dragover')}));
+dropZone.addEventListener('drop',e=>{const file=e.dataTransfer?.files?.[0];if(file)importFile(file)});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{if(!dropZone.contains(e.target))e.preventDefault()});
 search.addEventListener('input',()=>render(search.value));
 </script>
 </body></html>
