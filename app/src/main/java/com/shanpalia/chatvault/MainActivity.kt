@@ -50,6 +50,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.DisposableEffect
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
+import com.google.android.libraries.ads.mobile.sdk.banner.AdView
+import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAd
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -119,6 +130,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Thread {
+            MobileAds.initialize(
+                this,
+                InitializationConfig.Builder("ca-app-pub-3940256099942544~3347511713").build()
+            ) { }
+        }.start()
         requestBackupPicker = intent.getBooleanExtra("open_backup_picker", false)
         sharedBackupUris = sharedUrisFrom(intent)
         sharedBackupText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.takeIf { it.isNotBlank() }
@@ -288,16 +305,19 @@ private fun ChatVaultApp(
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
-                Tab.values().forEach { item ->
-                    val icon = when (item) {
-                        Tab.HOME -> Icons.Rounded.Home
-                        Tab.BACKUPS -> Icons.Rounded.Archive
-                        Tab.CHATS -> Icons.Rounded.Chat
-                        Tab.TOOLS -> Icons.Rounded.Build
-                        Tab.SETTINGS -> Icons.Rounded.Settings
+            Column(Modifier.fillMaxWidth().background(Color.White)) {
+                ChatVaultTestBanner()
+                NavigationBar(containerColor = Color.White, tonalElevation = 6.dp) {
+                    Tab.values().forEach { item ->
+                        val icon = when (item) {
+                            Tab.HOME -> Icons.Rounded.Home
+                            Tab.BACKUPS -> Icons.Rounded.Archive
+                            Tab.CHATS -> Icons.Rounded.Chat
+                            Tab.TOOLS -> Icons.Rounded.Build
+                            Tab.SETTINGS -> Icons.Rounded.Settings
+                        }
+                        NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(icon, null) }, label = { Text(item.title, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Mint, selectedTextColor = Mint, indicatorColor = Color(0xFFE1F4EE)))
                     }
-                    NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(icon, null) }, label = { Text(item.title, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Mint, selectedTextColor = Mint, indicatorColor = Color(0xFFE1F4EE)))
                 }
             }
         },
@@ -673,6 +693,36 @@ private fun openMediaFile(context: Context, file: File) {
 }
 
  
+@Composable
+private fun ChatVaultTestBanner() {
+    val context = LocalContext.current
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val adView = remember(context) { AdView(context) }
+    val adSize = remember(screenWidthDp) {
+        AdSize.getLargeAnchoredAdaptiveBannerAdSize(context, screenWidthDp.coerceAtLeast(320))
+    }
+
+    AndroidView(
+        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+        factory = { adView }
+    )
+
+    LaunchedEffect(adSize) {
+        val request = BannerAdRequest.Builder(
+            "ca-app-pub-3940256099942544/9214589741",
+            adSize
+        ).build()
+        adView.loadAd(request, object : AdLoadCallback<BannerAd> {
+            override fun onAdLoaded(ad: BannerAd) { }
+            override fun onAdFailedToLoad(adError: LoadAdError) { }
+        })
+    }
+
+    DisposableEffect(adView) {
+        onDispose { adView.destroy() }
+    }
+}
+
 @Composable
 private fun SplashScreen() {
     Column(Modifier.fillMaxSize().background(Color.White), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
