@@ -6,7 +6,7 @@ workflows:
     environment:
       java: 17
       android_signing:
-        - chatvault_keystore
+        - paliaapk-release
     scripts:
       - name: Set Android SDK location
         script: |
